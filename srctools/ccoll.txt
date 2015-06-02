@@ -1,0 +1,1140 @@
+D8696 : Collision type flags? = D8697 for F576 path
+	0x1: Collision object with different radii - within atmosphere
+	0x2: Distance valid?
+	0x10: Used for cargo
+	0x20: Within starport effect region
+	0x40: Landing
+	0x80: Crash
+D8697 : More type flags, only set in F576 path
+D8698 : Collision object index, F576 path only
+D8699 : 0 => landing, !0 => crash
+D8700 : Set at start to 0 or 0xff - planet crash mask
+D8701 : Chunk val for F576 path
+D8702 : Parent object ptr
+D8703 : Distance from object, 64-bit value
+D8704 : high dword of D8703
+D8705 : Altitude, 64-bit value
+D8706 : high dword of D8705
+D8707 : Planet var: 0: out of radius, 1: collision, -1: inside radius
+
+
+void F568 (p1, p2, p3, p4, p5, p6, p7)
+{
+	b[D8700] = 0;
+	F570 (p1, p2, p3, p4, p5, p6, p7);
+}
+
+void F569 (p1, p2, p3, p4, p5, p6, p7)
+{
+	b[D8700] = 0xff;
+	F570 (p1, p2, p3, p4, p5, p6, p7);
+}
+
+void F570 (PhysObj *p1, PhysObjList *p2, int flags, int parentindex, 
+	PhysObj **parptr, uint distance, int padindex)
+{
+	b[D8696] = b[D8697] = b[D8698] = b[D8701] = 0;
+	[D8703] = -1; b[D8707] = 0;
+
+	if (b[p1+0x56] != 0)		// valid parent object
+	{
+		[D8702] = esi = F1532 (b[p1+0x56], p2); 	// parent ptr
+		memcpy (sb, p1+0x3e, 6*4);					// Copy position
+		s1.b3 = F575 (sb, p1, esi);
+
+		if ([p1+0x148] != 0) {						// decrement delay
+			if ([D9155]/2 <= [p1+0x148]) [p1+0x148] -= [D9155]/2;
+			else [p1+0x148] = 0;
+		}
+		else {				// rot. FOR switching
+			if (s1.b3 & 2)
+				if (!b[p1+0x57]) { F572 (p1, esi); [p1+0x148] = 0x7f; }
+			else if (b[p1+0x57]) { F573 (p1, esi); [p1+0x148] = 0x7f; }
+		}
+	}
+	b[p4] = [p1+0x56]; s1.b3 = b[D8696];
+
+	for (edi=0x72, eax=p2+0x72, s2=eax; edi>0; edi--, s2--)
+	{
+		if (!(b[s2] & 4)) continue;			// non-physical object?
+		if (edi == b[p1+0x86]) continue;	// self
+		esi = F1532 (edi, p2);				// target obj ptr
+		if (b[esi+0x8b] != 0) contine;		// rendering exclusion?
+		if (b[p4] != b[esi+0x56]) continue;	// not same parent
+		if ([esi+0x99]==0 && [p1+0x99]!=0) continue;
+		if (b[p1+0x57] != b[esi+0x57) {
+			F1677 (sb, p1);
+			F1677 (sb2, esi);			// global vectors
+			Vec64Sub (sb, sb2);			// relative vector
+		}
+		else {
+			memcpy (sb, p1+0x3e, 6*4);
+			Vec64Sub (sb, esi+0x3e);	// relative vector
+		}
+		F575 (sb, p1, esi);		// collide
+	}
+
+	b[D8696] |= s1.b3;		// rval from parent collision test
+	if ([D8704] != 0 || [D8703] < 0) [p6] = -1;
+	else [p6] = [D8703];		// distance
+	[p5] = [D8702];				// parent object ptr
+	b[p7] = b[D8701] & 0x1f;	// pad index?
+	b[p4] = b[D8698];			// collision object index
+	b[p3] = b[D8696];			// flags
+	return b[D8696];
+}
+
+// negates x, swaps y/z
+
+void F571 (Mat32 *p1)
+{
+	s3 = [p1+0x18]; s2 = [p1+0x1c]; s1 = [p1+0x20];
+	[p1+0x18] = [p1+0xc]; [p1+0x1c] = [p1+0x10]; [p1+0x29] = [p1+0x14];
+	[p1+0xc] = s3; [p1+0x10] = s2; [p1+0x14] = s1;
+	-[p1+0x0]; -[p1+0x4]; -[p1+0x8];
+}
+
+// Switch to rot. FOR
+
+void F572 (PhysObj *p1, OrbitalObj *p2)
+{
+	edi = Vec64Truncate (p1+0x3e, 0x1c);
+	Vec32 tv = (Vec64)[p1+0x3e];
+	VecMatTMul (&tv, &tv, p2);	// Transform position
+	F1517 (p1+0x3e, &tv, edi);	// shift back
+	MatTMatMul (p1, p1, p2);	// Transform orientation
+	[p1+0x58] = b[D8811] - 1;	// Set last update frame
+	b[p1+0x57] = 1;
+	VecMatTMul (p1+0x8c, p1+0x8c, p2); 	// Transform velocity
+}
+
+// Switch to linear FOR
+
+void F573 (PhysObj *p1, OrbitalObj *p2)
+{
+	edi = Vec64Truncate (p1+0x3e, 0x1c);
+	Vec32 tv = (Vec64)[p1+0x3e];
+	VecMatMul (&tv, &tv, p2);	// Transform position
+	F1517 (p1+0x3e, &tv, edi);	// shift back
+	MatMatMul (p1, p1, p2);	// Transform orientation
+//	[p1+0x58] = b[D8811] - 1;	// Missing?
+	b[p1+0x57] = 0;
+	VecMatMul (p1+0x8c, p1+0x8c, p2); 	// Transform velocity
+}
+
+// Gets distance between two objects
+
+void F574 (int *distance, Vec64 *relpos, PhysObj *obj1, PhysObj *obj2)
+{
+	b[D8698] = b[D8697] = b[D8698] = 0;
+	b[D8700] = b[D8701] = 0;
+	[D8703] = -1; b[D8701] = 0;
+	F575 (p2, p3, p4);
+	if ([D8704] != 0 || [D8703] < 0) [p1] = -1;
+	else [p1] = [D8703];
+}
+
+// Big collision func - handles planet/starport landings too
+
+int F575 (Vec64 *relpos, PhysObj *obj1, PhysObj *obj2)
+{
+	memcpy (s-0x38, p1, 6*4);		// save relpos
+	Vec64Abs (p1, p1);
+	Int64Add64 (s-8, [p1], [p1+4], [p1+8], [p1+0xc]);
+	Int64Add64 (s-8, [s-8], [s-4], [p1+0x10], p1+0x14]);	// |x|+|y|+|z|
+	Int64ArithShift (s-8, -1);
+	Int64Sub64 (s-8, [s-8], [s-4], [p2+0x138], [p2+0x13c]);
+	if ([s-4] >= 0) {
+		Int64Sub64 (s-8, [s-8], [s-4], [p3+0x138], [p3+0x13c]);
+		if ([s-4] >= 0) return 0;		// no interaction 
+	}
+
+	b[D8707] = 0;
+	if (b[p3+0x14c] < 0)		// Complex object
+	{
+		if (F576 (p2, p3, s-0x38) == 0) {
+			if (b[D8707] == 0) {		// out of planet radius?
+				F578 (p2, p3);
+				return b[D8696];
+			}					// passes through planet collision...
+		}
+		else return b[D8696];
+	}
+	else {						// simple object
+		eax = F577 (&s3, p2, p3, [s-0x38], [s-0x34], ..., p1);
+		if (eax == 0) {
+			if (b[p3+0x86] != b[p2+0x56]) {		// not current parent
+				F578 (p2, p3);
+				return b[D8696];
+			}
+			b[D8707] = 2;		// starport thing?
+		}
+		else return b[D8696];
+	}
+
+	// more stuff. Planet collision only?
+
+	b[D8696] |= 2;
+	s4 = abs([p2+0x8c])+abs([p2+0x90])+abs([p2+0x94]);
+	if (b[D8707] == 1) {		// surface hit
+		memcpy (s-0x50, s-0x38, 6*4);
+		Vec64Truncate (s-0x50, 0x1c);
+		[s-0x80]=[s-0x50]; [s-0x7c]=[s-0x48]; [s-0x78]=[s-0x40];
+		F1503 (s-0x80, 0x7fffffff); 		// set magnitude
+	} else {
+		[s-0x80]=[s-0x38]; [s-0x7c]=[s-0x30]; [s-0x78]=[s-0x28];
+		F1519 (s-0x80, s-0x80);				// fix31 normalise
+	}	
+
+	esi = Vec32Dot (p2+0xc, s-0x80);
+	if (s4<=0x258 && w[p2+0x9e]==-1 && esi >= 0x78000000) {
+		b[D8696] |= 0x40;		// set landed
+		b[D8696] &= 0x7f;		// clear collision
+		b[D8699] = 0;
+	}	
+	else b[D8699] = b[D8700];		// some sort of masking thing
+
+	s6 = F1538 ([p2+0x82]);
+	edx = F1538 ([p3+0x82]);
+	if (b[D8707] == 1) {
+		Int64Sub64 (s-0x20, [p2+0x140], [p2+0x144], [D8705], [D8706]);
+		Vec64 tdv = (Vec32)[s-0x80] * [s-0x20];
+		Vec64Add (p2+0x3e, p2+0x3e, &tdv);		// modify height by diff
+	} else {
+		eax = [edx+0x2c] << 16;
+		esi = [edx+0x14] + [edx+0x18];
+		edx = esi - [s6+0x14] - [s6+0x18];
+		s5 = [s6+0x30] << 16;
+		if (edx != 0) s5 >>= edx;
+		if ((eax += s5) < 0) { eax >>= 1; s3++; }
+		Vec32 tv = (Vec64)[s-0x38];
+		F1504 (&tv, eax, s3);			// magnitude setter
+		eax = 0x20 - ((0x37 - esi) + 1);
+		(Vec64)[p2+0x3e] = (Vec32)tv << eax;	// set height to radius
+	}
+
+	if (b[D8699] != 0) {		// collision, not landing
+		b[D8696] |= 0x80;
+		if (b[p2+0x86] == b[D8857])		// player object! Woo!
+		{
+			// bounce player object	
+		}
+		else if ([p2+0x82] > 0xd && (b[p2+0x87] == 0xb || b[p2+0x87] == 0xe))
+		{
+			// bounce AI object...
+		}
+	}
+	else {
+		// reorientate
+	}
+	if ([p3+0x140] != [p3+0x138]) b[D8696] |= 1;
+	if (b[D8698] == 0) {
+		b[D8698] = b[p3+0x86];
+		[D8702] = p3;
+	}
+	return b[D8696];
+}
+
+
+// Only one heirachial layer
+// word stream backwards from model+0x34
+// primary radius defined by PhysObj+0x140
+// word stream : first word distance in local units
+//			second word &7 => direction, rest => radius (local units)
+// scale: everything shifted by 0x17 - model+0x14
+
+F576 (PhysObj *obj1, PhysObj *obj2, Vec64 *relpos)
+{
+	b[D8697] = 0;
+	eax = F1538 ([p1+0x82]);		// get model info
+	s3 = 0x17 - [eax+0x14];			// scale
+	s1 = [eax+0x34];				// collision data
+	ebx = [p1+0x140];				// "real" radius?
+	Vec64Copy (s-0x24, p3);
+
+	while (1)
+	{
+		al = F579 (&s2.b3, p1, p2, s-0x24, ebx);	// do collision
+		if (al > 0) b[D8697] |= 0x80;				// default action?
+		if (b[D8697] != 0) {			// Hmm.
+			b[D8698] = b[p2+0x86];		// collision object index
+			[D8702] = p2;				// collision object
+			b[D8696] = b[D8697];
+			b[D8701] = s2.b3;			// debug thing? ebx from F582
+		}
+		if (al >= 0) return 0;					// collision
+		if (b[p1+0x14c] >= 0) return -1;		// impossible - not called
+
+		s1 -= 2; eax = w[s1];			// distance (local units)
+		if (eax == 0) return -1;		// Not collision
+		s1 -= 2; ebx = w[si];			// radius | direction
+		switch (ebx & 6) {
+			case 0: Vec32Copy (s-0x30, p1); break;
+			case 2: Vec32Copy (s-0x30, p1+0xc); break;
+			case 4: Vec32Copy (s-0x30, p1+0x18); break;
+		}
+		if (ebx & 1) Vec32Neg (s-0x30);
+		[s-0x30] = ([s-0x30] >> 16) * eax;
+		[s-0x2c] = ([s-0x2c] >> 16) * eax;
+		[s-0x28] = ([s-0x28] >> 16) * eax;
+		ebx = (ebx & 0xfff8) << 15;
+		if (s3 != 0) { Vec32ShiftR (s-0x30, s3); ebx >>= s3; }
+		Int64Add32 (s-0x24, [p3+0x0], [p3+0x4], [s-0x30]);
+		Int64Add32 (s-0x1c, [p3+0x8], [p3+0xc], [s-0x30]);
+		Int64Add32 (s-0x14, [p3+0x10], [p3+0x14], [s-0x30]);
+	}
+}
+
+
+// Simple radius collision function
+// returns 0: collision, -1: no collision
+
+int F577 (int *p1, PhysObj *obj1, PhysObj *p2, Vec64 relpos, Vec64 *abspos)
+{
+	s1 = p5->xh | p5->yh | p5->zh | [p3+0x13c];
+	if (s1 != 0) ebx = FindMSB (s1) + 3;
+	else ebx = FindMSB (p5->xl | p5->yl | p5->zl | [p3+0x138]) - 0x1d;
+	if (ebx<=0) {
+		s2 = [p2+0x140] + [p3+0x138] << -ebx;		// assumption? bug?
+		p4.xl >>= -ebx; p4.yl >>= -ebx; p4.zl >>= -ebx;
+	} else {
+		Vec64Shift (&p4, ebx);
+		Int64Add64 (&s4, [p3+0x138], [p3+0x13c], [p2+0x138], [p2+0x13c]);
+		Int64ArithShift (&s4, -ebx);
+		s2 = s4;
+	}
+	[p1] = F1522 (p4.xl) + F1522 (p4.yl) + F1522 (p4.zl);
+	if (F1522 (s2) > [p1]) return 0;		// collision
+
+	b[D8696] |= 2;
+	[D8703] = F1502 ([p1]>>1) * 2;		// distance to object
+	if ([D8703] < 0) [D8703] = 0;		// impossible?
+	[D8704] = 0;
+	Int64ArithShift (D8703, ebx);		// correct distance
+	if ([p3+0x140] != [p3+0x138]) b[D8696] |= 1;	// different radii...
+	return -1;							// no collision
+}
+
+// radius and pos in same units.
+// Velocity? <16?
+
+// damage - use veldiffmag
+// veldiffmag should be *negative*
+// otherwise ignore.
+
+// Direction:
+Vec64Sub (colldir, p2+0x3e, p1+0x3e);		// pos2 relative to pos1
+shift = Vec64Truncate (colldir, 0xd);
+Vec64to32 (colldir32, colldir);
+
+Int64Add (combrad, [p1+0x138], [p2+0x138]);
+Vec64Mul (colloff, colldir, combrad);
+Vec64Shift (colloff, shift);
+Vec64Add (p2+0x3e, p1+0x3e, colloff);
+
+// Velocity:
+Vec32Sub (veldiff, p2+0x8c, p1+0x8c);		// vel2 relative to vel1
+veldiffmag = -2 * Vec32Dot (colldir32, veldiff);
+Vec32Mul (veldiff, colldir32, veldiffmag);
+Vec32Add (p2+0x8c, p2+0x8c, veldiff);
+
+// Position offset
+Int64Add64 (ebp-0x20, [p1+0x138], [p1+0x13c], [p2+0x138], [p2+0x13c]);
+if ([ebp-0x1c]) radshift = FindMSB ([ebp-0x1c]) + 3;
+else radshift = FindMSB ([ebp-20]) - 0x1d;
+Int64ArithShift (ebp-0x20, -radshift);
+Vec32Mul (colloff, colldir, [ebp-0x20]);
+SignExtend (colloff);
+Vec64Shift (colloff, radshift);
+Vec64Add (p2+0x3e, p1+0x3e, colloff);
+
+stack:
+ebp-0x18:	Vec64 colldir
+ebp-0x20:	Int64 combrad
+ebp-0x38:	Vec64 colloff
+ebp-0x3c:	int dirshift
+ebp-0x48:	Vec32 colldir32
+ebp-0x54:	Vec32 veldiff
+ebp-0x58:	int radshift
+
+; Direction
+; Vec64Sub (colldir, p2+0x3e, p1+0x3e)
+lea eax, [ebx+0x3e]
+push eax
+lea eax, [esi+0x3e]
+push eax
+lea eax, [ebp-0x18]
+push eax
+call FUNC_001662_Vec64Sub
+add esp, 12
+
+; shift = Vec64Truncate (colldir, 0xd);
+push dword 0x1e		; 0x1f? 0x1e?
+lea eax, [ebp-0x18]
+push eax
+call FUNC_001658_Vec64Truncate
+add esp, 8
+mov [ebp-0x3c], eax
+
+; Vec64to32 (colldir32, colldir);
+mov eax, [ebp-0x18]
+mov [ebp-0x48], eax
+mov eax, [ebp-0x10]
+mov [ebp-0x44], eax
+mov eax, [ebp-0x8]
+mov [ebp-0x40], eax
+
+; Velocity
+; Vec32Sub (veldiff, p2+0x8c, p1+0x8c)
+mov eax, [esi+0x8c]
+sub eax, [ebx+0x8c]
+mov [ebp-0x54], eax
+mov eax, [esi+0x90]
+sub eax, [ebx+0x90]
+mov [ebp-0x50], eax
+mov eax, [esi+0x94]
+sub eax, [ebx+0x94]
+mov [ebp-0x4c], eax
+
+; veldiffmag = -2 * Vec32Dot (colldir32, veldiff)
+push dword [ebp-0x54]
+push dword [ebp-0x48]
+call FUNC_001521
+add esp, 8
+push eax
+push dword [ebp-0x50]
+push dword [ebp-0x44]
+call FUNC_001521
+add esp, 8
+pop edx
+add eax, edx
+push eax
+push dword [ebp-0x4c]
+push dword [ebp-0x40]
+call FUNC_001521
+add esp, 8
+pop edx
+add eax, edx
+add eax, eax
+neg eax
+
+; Vec32Mul (veldiff, colldir32, veldiffmag)
+mov edi, eax
+push edi
+push dword [ebp-0x48]
+call FUNC_001521
+add esp, 8
+mov [ebp-0x54], eax
+push edi
+push dword [ebp-0x44]
+call FUNC_001521
+add esp, 8
+mov [ebp-0x50], eax
+push edi
+push dword [ebp-0x40]
+call FUNC_001521
+add esp, 8
+mov [ebp-0x4c], eax
+
+; Vec32Add (p2+0x8c, p2+0x8c, veldiff)
+mov eax, [ebp-0x54]
+add [esi+0x8c], eax
+mov eax, [ebp-0x50]
+add [esi+0x90], eax
+mov eax, [ebp-0x4c]
+add [esi+0x94], eax
+
+
+; Position offset - unnecessary.
+
+push dword [esi+0x13c]
+push dword [esi+0x138]
+push dword [ebx+0x13c]
+push dword [ebx+0x138]
+lea eax, [ebp-0x20]
+push eax
+call FUNC_001333_Int64Add64
+add esp, 20
+
+; if ([ebp-0x1c]) shift = FindMSB ([ebp-0x1c]) + 3;
+; else shift = FindMSB ([ebp-20]) - 0x1d;
+cmp dword [ebp-0x1c], 0
+jz .lowrad
+push dword [ebp-0x1c]
+call FUNC_001656_FindMSB
+add esp, 4
+add eax, 3
+jmp .highrad
+.lowrad:
+push dword [ebp-0x20]
+call FUNC_001656_FindMSB
+add esp, 4
+sub eax, 0x1d
+.highrad:
+mov [ebp-0x58], eax
+
+; Int64ArithShift (ebp-0x20, -msb);
+neg eax
+push eax
+lea eax, [ebp-0x20]
+push eax
+call FUNC_001341_Int64ArithShift
+add esp, 8
+
+; Vec32Mul (colloff, colldir, [ebp-0x20]);
+; SignExtend (colloff);
+
+mov edi, [ebp-0x20]
+push edi
+push dword [ebp-0x48]
+call FUNC_001521
+add esp, 8
+cdq
+mov [ebp-0x38], eax
+mov [ebp-0x34], edx
+push edi
+push dword [ebp-0x44]
+call FUNC_001521
+add esp, 8
+cdq
+mov [ebp-0x30], eax
+mov [ebp-0x2c], edx
+push edi
+push dword [ebp-0x40]
+call FUNC_001521
+add esp, 8
+cdq
+mov [ebp-0x28], eax
+mov [ebp-0x24], edx
+
+; Vec64Shift (colloff, shift);
+push dword [ebp-0x58]
+lea eax, [ebp-0x38]
+push eax
+call FUNC_001660_Vec64Shift
+add esp, 8
+
+; Vec64Add (p2+0x3e, p1+0x3e, colloff);
+lea eax, [ebx+0x3e]
+push eax
+lea eax, [ebp-0x38]
+push eax
+call FUNC_001661_Vec64Add
+add esp, 12
+
+Vec64Copy... to p2+0x3e
+
+
+// Collision damage function, obj1 vs. obj2
+
+void F578 (PhysObj *obj1, PhysObj *obj2)
+{
+	b[D8696] |= 0x80;
+	if (b[p1+0x56]==b[p2+0x86] || b[p2+0x87]==1)	// parent or...
+	{
+		[p1+0x8c] = -[p1+0x8c] >> 2;
+		[p1+0x90] = -[p1+0x90] >> 2;
+		[p1+0x94] = -[p1+0x94] >> 2;		// bounce...
+		esi = abs([p1+0x8c])+abs([p1+0x90])+abs([p1+0x94]);
+		if ([p1+0x82] <= 0xd) return;		// missile
+		F953 (p1, esi, 0); return;
+	}
+	[p1+0x8c] = [p2+0x8c] = [p1+0x8c] + [p2+0x8c] >> 1;
+	[p1+0x90] = [p2+0x90] = [p1+0x90] + [p2+0x90] >> 1;
+	[p1+0x94] = [p2+0x94] = [p1+0x94] + [p2+0x94] >> 1;		// equalise speed
+	if (b[D8700] == 0) return;
+	if ([p1+0x82] <= 0xd || [p2+0x82] <= 0xd) return;		// BUG!!
+
+	if (w[p2+0xe4] <= w[p1+0xe4]) {
+		F953 (p2, w[p2+0xe4]*2, b[p1+0x86]);
+		F953 (p1, w[p2+0xe4]*2, b[p2+0x86]);	// damage!
+	} else {
+		F953 (p2, w[p1+0xe4]*2, b[p1+0x86]);
+		F953 (p1, w[p1+0xe4]*2, b[p2+0x86]);
+	}
+}
+
+struct CollInfo
+{
+	Vec32 relpos;
+	MeshNormal *pNorm;
+	MeshVertex *pVtx;
+	int meshzoom;
+	int vecscale;
+}
+
+// Translation wrapper for complex collision func F582
+
+int F579 (char *p1, PhysObj *obj1, PhysObj *obj2, Vec64 *meshpos, int radius)
+{
+	CollInfo c;
+
+	ebx = F1538 ([p3+0x82]);
+	c.pNorm = [ebx+0xc]; c.pVertex = [ebx+0x4];
+	c.meshzoom = [ebx+0x14] + [ebx+0x18];
+	c.vecscale = Vec64Truncate (p4, 0x1c);		// s1 = distance shifted
+	Vec64to32 (&c.relpos, p4);
+
+	eax = c.vecscale - c.meshzoom + 0x17;			// distance shifted minus distance req'd
+	if (eax < 0) { c.vecscale -= eax; Vec32ShiftR (&c.relpos, eax); }
+	if (c.vecscale < 0) p5 <<= -c.vecscale;
+	else if (c.vecscale > 0) p5 >>= c.vecscale;		// compensate with radius
+
+	if (b[p2+0x57] == 0 || b[p2+0x56] != b[p3+0x86])
+		VecMatTMul (&c.relpos, &c.relpos, p3);			// Correct relative position
+
+	return F582 (p1, &c, [ebx+0x34], p3, p5);
+}
+
+
+// Heirachial object function
+// recursively calls F582 for a child chunk
+
+int F580 (char *p1, CollInfo *collinfo, int modelidx, int vertexidx,
+	int orientation, int radius, PhysObj *obj)
+{
+	CollInfo c;
+	Vec32 tv;
+
+	esi = F1538 (p3);	// erk
+	c.pNorm = [esi+0xc]; c.pVertex = [esi+0x4];
+	c.meshzoom = [esi+0x14] + [esi+0x18];
+	c.vecscale = collinfo->vecscale;
+	
+	s2 = [collinfo->pVtx + (p4>>1)*6];
+	s1 = w[collinfo->pVtx + (p4>>1)*6 + 4];
+	if (b[p4] & 1) tv.x = -s2.b2; else tv.x = s2.b2;
+	tv.y = s2.b3; tv.z = s1.b0;
+
+	eax = collinfo->meshzoom - collinfo->vecscale;
+	if (eax < 0) Vec32RShift (&tv, -eax);
+	else Vec32LShift (&tv, eax);
+	Vec32Subtract (&tv, &collinfo->relpos, &tv);
+
+	if (b[p5] == 0) Vec32Copy (&c.relpos, &tv);
+	else {
+		if (p5 & 0x20) tv.x = -tv.x;
+		if (p5 & 0x10) tv.y = -tv.y;
+		if (p5 & 0x8) tv.z = -tv.z;
+		switch (p5 & 7) {
+			case 0: c.relpos.x = tv.x; c.relpos.y = tv.y;
+				c.relpos.z = tv.z; break;
+			case 1: c.relpos.x = tv.z; c.relpos.y = tv.x;
+				c.relpos.z = tv.y; break;
+			case 2: c.relpos.x = tv.y; c.relpos.y = tv.z;
+				c.relpos.z = tv.x; break;
+			case 3: c.relpos.x = tv.z; c.relpos.y = tv.y;
+				c.relpos.z = tv.x; break;
+			case 4: c.relpos.x = tv.y; c.relpos.y = tv.x;
+				c.relpos.z = tv.z; break;
+			case 5: c.relpos.x = tv.x; c.relpos.y = tv.z;
+				c.relpos.z = tv.y; break;
+		}
+	}
+	return F582 (p1, &c, [esi+0x34], p7, p6);
+}
+
+
+// Collision check against terrain
+
+CollStream *F581 (int *rval, CollStream *coll, PhysObj *obj,
+	int radius, CollInfo *collinfo)
+{
+	eax = b[p2]; edx = b[p2+1]; ebx = b[p2+2];
+	s2 = b[p2+5]<<8 | b[p2+4]; s1 = b[p2+3];
+	b[D8707] = 0xff;
+
+	s4 = [[collinfo->pVtx + 6*(eax>>1)];
+	s3 = w[[collinfo->pVtx + 6*(eax>>1) + 4];
+	if (eax&1) tv.x = -s4.b2; else tv1.x = s4.b2;
+	tv1.y = s4.b3; tv1.z = s3.b0;
+
+	s4 = [[collinfo->pVtx + 6*(edx>>1)];
+	s3 = w[[collinfo->pVtx + 6*(edx>>1) + 4];
+	if (edx&1) tv2.x = -s4.b2; else tv2.x = s4.b2;
+	tv2.y = s4.b3; tv2.z = s3.b0;
+
+	s4 = [[collinfo->pVtx + 6*(ebx>>1)];
+	s3 = w[[collinfo->pVtx + 6*(ebx>>1) + 4];
+	if (ebx&1) tv3.x = -s4.b2; else tv3.x = s4.b2;
+	tv3.y = s4.b3; tv3.z = s3.b0;
+
+	s4 = [[collinfo->pVtx + 6*(s1>>1)];
+	s3 = w[[collinfo->pVtx + 6*(s1>>1) + 4];
+	if (s1&1) tv4.x = -s4.b2; else tv4.x = s4.b2;
+	tv4.y = s4.b3; tv4.z = s3.b0;
+
+	eax = collinfo->meshzoom - collinfo->vecscale;
+	if (eax < 0) Right-shift tv1 to tv4
+	else left shift tv1 to tv4
+
+	tv2 -= tv1; tv3 -= tv1; tv4 -= tv1;
+	tv1 -= collinfo->relpos;
+	s5 = F1466 (&tv1);
+	s8 = [p3+0x138]; s7 = [p3+0x13c];
+	Int64ArithShift (&s8, -collinfo->vecscale);
+	if (s5-s8 >= p4) {
+		[p1] = -1; b[D8707] = 0;
+		return F1822 (p2+6);
+	}
+
+	if (tv1.x != 0) {
+		tv5.x = tv1.x; tv5.y = tv2.y; tv5.z = 0;
+		edi = F1466 (&tv5);
+		if (tv5.x < 0) {
+			ebx = F1523 (-tv5.x, edi);
+			if (ebx<0) ebx = 0x7fffffff; else ebx = -ebx;
+		} else {
+			ebx = F1523 (tv5.x, edi);
+			if (ebx<0) ebx = 0x7fffffff;
+		}
+		if (tv5.y < 0) {
+			esi = F1523 (-tv5.y, edi);
+			if (esi<0) esi = 0x7fffffff; else esi = -esi;
+		} else {
+			esi = F1523 (tv5.y, edi);
+			if (esi<0) esi = 0x7fffffff;
+		}
+		tv6 = { esi, ebx, 0 };
+		tv7 = { -ebx, esi, 0 };
+		tv8 = { 0, 0, 0x7fffffff }; tv1.y = edi;
+	} else {
+		tv6 = { 0, 0, 0x7fffffff };
+		tv7 = { 0, 0x7fffffff, 0 };
+		tv8 = { 0, 0, 0x7fffffff };
+	}
+
+	if (tv1.y != 0) {
+		tv9.x = 0; tv9.y = tv1.y; tv9.z = tv1.z;
+		edi = F1466 (&tv9);
+		if (tv9.y < 0) {
+			ebx = F1523 (-tv9.y, edi);
+			if (ebx<0) ebx = 0x7fffffff; else ebx = -ebx;
+		} else {
+			ebx = F1523 (tv9.y, edi);
+			if (ebx<0) ebx = 0x7fffffff;
+		}
+		if (tv9.z < 0) {
+			esi = F1523 (-tv9.z, edi);
+			if (esi<0) esi = 0x7fffffff; else esi = -esi;
+		} else {
+			esi = F1523 (tv9.z, edi);
+			if (esi<0) esi = 0x7fffffff;
+		}
+		tv6.z = F1521 (tv6.y, ebx); tv6.y = F1521 (tv6.y, esi);
+		tv7.z = F1521 (tv7.y, ebx); tv7.y = F1521 (tv7.y, esi);
+		tv8.y = -ebx; tv8.z = esi;
+	}
+
+	tv1 = { 0, 0, s4 };
+	VecMatMul (&tv2, &tv2, &tv876);
+	VecMatMul (&tv3, &tv3, &tv876);
+	VecMatMul (&tv4, &tv4, &tv876);
+	p2 = F1876 (&s6, 0x77359400>>collinfo->vecscale, p3, 0, p2+6,
+		&tv1, &tv2, s2, 0, 0, 0, 1);
+
+	if (p4 >> 0x10 > s6) [p1] = 0; else [p1] = -1;
+	edx = 0x77359400 >> collinfo->vecscale;		// max height
+	if (edx > s6) {
+		[D8703] = s6; [D8704] = s6 >> 31;
+		Int64ArithShift (D8703, collinfo->vecscale);
+	}		// altitude
+	[D8705] = [D8703]; [D8706] = [D8704];
+	if ([p1] == 0) {
+		[D8703] = [D8704] = 0;
+		b[D8707] = 1;
+	}
+	return p2;
+}
+
+// processes collstream versus sphere
+// returns 0: collision, -1: no collision 1: nothing happened
+// first byte type, second byte returned on collision?
+// second byte ORed with b[D8769]. If 0x80 not set, no collision, just mark.
+// 0x80 of b[D8769] only set on collision
+
+int F582 (char *p1, CollInfo *collinfo, CollStream *coll,
+	PhysObj *obj, int radius)
+{
+	for (esi=p3, ebx=b[esi++]; ebx != 0; ebx = b[esi++])
+	{
+		s1 = b[esi++];
+		if (ebx & 0x20)		// animation thing - optional disabling
+		{
+			edx = w[p4+b[esi++]*2+0x9c];
+			eax = b[esi++]; edx >>= eax & 0x1f;
+			if ((edx^(eax>>7))&1) switch (ebx & 0xc0)
+			{
+				case 0: edi = b[esi++]; 
+					if (edi == 0xff) { esi = F1822 (esi+6); continue; }
+					if (edi == 0) continue;
+					while (b[esi++] != 0); continue;
+				case 0x40: while (b[esi++] != 0); continue;
+				case 0x80: esi += 4; continue;
+				case 0xc0: while (b[esi++] != 0); continue;
+			}
+		}
+
+		switch (ebx & 0xc0)
+		{
+			case 0:
+			edi = b[esi++];
+			if (edi == 0xff) {
+				esi = F581 (&s2, esi, p4, p5, p2);
+				if (s2 == 0) {
+					b[D8697] |= s1; b[p1] = ebx;
+					return 0;
+				} else {
+					b[D8697] |= s1 & 0x7f;
+					continue;
+				}
+			}
+			for (; edi != 0; edi = b[esi++]) {
+				eax = F583 (p5, edi, p2);
+				if (eax != 0) {
+					b[D8697] |= s1 & 0x7f; b[p1] = ebx;
+					return -1;
+				}			// if any outside, no collision
+			}
+			continue;
+
+			case 0x40:			// if outside all, don't collide
+			do {
+				edi = b[esi++];
+				if (edi == 0) {
+					b[D8697] |= s1 & 0x7f; b[p1] = ebx;
+					return -1;		// not collision
+				}
+			} while (F583 (p5, edi, p2) != 0);
+			while (b[esi++] != 0);
+			continue;
+
+			case 0x80:			// J2525
+			edi = (b[esi++] << 8) | b[esi++];		// recursion - model
+			edx = b[esi++]; eax = b[esi++];			// orientation, vertex
+			eax = F580 (p1, p2, edi, eax, edx, p5, p4);
+			b[D8701] |= [p1];
+			if (eax < 0) {			// exclusion case
+				b[D8697] |= s1 & 0x7f; b[p1] = ebx;
+				return -1;
+			}
+			if (eax > 0) continue;			// no collision found
+			b[D8697] |= s1;
+			if (!(s1&0x80)) continue;		// Only mark, not return
+			b[p1] = ebx; return 0;
+
+			case 0xc0:			// if inside all and s1&0x80, collide
+			do {
+				edi = b[esi++];
+				if (edi == 0) {
+					b[D8697] |= s1;
+					if (s1&0x80) { b[p1] = ebx; return 0; }
+				}
+			} while (F583 (p5, edi, p2) == 0);
+			while (b[esi++] != 0);
+			continue;
+		}		
+	}
+	b[p1] = 0;
+	return 1;
+}
+
+// Collides sphere with "surface" - dependent on normal?
+// Ah. Returns zero if sphere intersects or is inside plane, else 1.
+
+int F583 (int radius, int surfaceindex, CollInfo *collinfo)
+{
+	s2 = [collinfo->pNorm + (p2>>1)*6 - 6];
+	s1 = w[collinfo->pNorm + (p2>>1)*6 - 2];	// expanded normal
+	s4 = [collinfo->pVtx + (s2.b1>>1)*6];
+	s3 = w[collinfo->pVtx + (s2.b1>>1)*6 + 4];	// expanded vertex
+
+	if (p2&1) s2.b2 = -s2.b2;
+	tv1.x = s2.b2 << 8;
+	tv1.y = s2.b3 << 8;
+	tv1.z = s1.b0 << 8;
+	if (s2.b0&1) s4.b2 = -s4.b2;
+
+	eax = c.meshzoom - c.vecscale;
+	if (eax < 0) {
+		tv2.x = s4.b2 >> -eax;
+		tv2.y = s4.b3 >> -eax;
+		tv2.z = s3.b0 >> -eax;
+	} else {
+		tv2.x = s4.b2 << eax;
+		tv2.y = s4.b3 << eax;
+		tv2.z = s3.b0 << eax;
+	}
+	Vec32Subtract (&tv2, &collinfo->relpos);
+	ebx = abs (tv2.x) + abs (tv2.y) + abs (tv2.z);
+	eax = FindMSB (ebx) - 0xd;
+	if (eax < 0) eax = 0;
+	edx = (tv2.x>>eax)*tv1.x + (tv2.y>>eax)*tv1.y + (tv2.z>>eax)*tv1.z;
+	edx = -2 * edx;
+	return edx >= (p1 >> eax);
+}
+
+
+
+		cmp dword [logfile], 0
+		jnz .endopen
+		push dword pLogAttrib
+		push dword pLogName
+		call _fopen
+		add esp,byte +0x8
+		mov [logfile], eax
+	.endopen:
+
+; Print "Collision!"
+		push dword pLogString
+		push dword [logfile]
+		call _fprintf
+		call _fflush
+		add esp, 8
+
+; Obj1 stats:
+;radius
+		push dword [ebx+0x138]
+		push dword [ebx+0x13c]
+;vel
+		push dword [ebx+0x94]
+		push dword [ebx+0x90]
+		push dword [ebx+0x8c]
+;position
+		push dword [ebx+0x4e]
+		push dword [ebx+0x52]
+		push dword [ebx+0x46]
+		push dword [ebx+0x4a]
+		push dword [ebx+0x3e]
+		push dword [ebx+0x42]
+;index
+		movzx eax, byte [ebx+0x86]
+		push eax
+		push dword pLogString2
+		push dword [logfile]
+		call _fprintf
+		call _fflush
+		add esp, 56
+				
+; Obj2 stats:
+;radius
+		push dword [esi+0x138]
+		push dword [esi+0x13c]
+;vel
+		push dword [esi+0x94]
+		push dword [esi+0x90]
+		push dword [esi+0x8c]
+;position
+		push dword [esi+0x4e]
+		push dword [esi+0x52]
+		push dword [esi+0x46]
+		push dword [esi+0x4a]
+		push dword [esi+0x3e]
+		push dword [esi+0x42]
+;index
+		movzx eax, byte [esi+0x86]
+		push eax
+		push dword pLogString2
+		push dword [logfile]
+		call _fprintf
+		call _fflush
+		add esp, 56
+
+; Direction
+; Vec64Sub (colldir, p2+0x3e, p1+0x3e)
+push esi
+lea esi, [esi+0x3e]
+lea edi, [ebp-0x18]
+mov ecx, 6
+rep movsd
+pop esi
+
+		push dword [ebp-0x8]
+		push dword [ebp-0x4]
+		push dword [ebp-0x10]
+		push dword [ebp-0xc]
+		push dword [ebp-0x18]
+		push dword [ebp-0x14]
+		push dword pLogString7
+		push dword [logfile]
+		call _fprintf
+		call _fflush
+		add esp, 32
+
+lea eax, [ebx+0x3e]
+push eax
+lea eax, [ebp-0x18]
+push eax
+call FUNC_001662_Vec64Sub
+add esp, 8
+
+		push dword [ebp-0x8]
+		push dword [ebp-0x4]
+		push dword [ebp-0x10]
+		push dword [ebp-0xc]
+		push dword [ebp-0x18]
+		push dword [ebp-0x14]
+		push dword pLogString7
+		push dword [logfile]
+		call _fprintf
+		call _fflush
+		add esp, 32
+
+; shift = Vec64Truncate (colldir, 0xd);
+push dword 0x1e		; 0x1f? 0x1e?
+lea eax, [ebp-0x18]
+push eax
+call FUNC_001658_Vec64Truncate
+add esp, 8
+
+		push dword [ebp-0x8]
+		push dword [ebp-0x4]
+		push dword [ebp-0x10]
+		push dword [ebp-0xc]
+		push dword [ebp-0x18]
+		push dword [ebp-0x14]
+		push dword pLogString7
+		push dword [logfile]
+		call _fprintf
+		call _fflush
+		add esp, 32
+
+; Vec64to32 (colldir32, colldir);
+; Vec32Normalise (colldir32);
+mov eax, [ebp-0x18]
+mov [ebp-0x48], eax
+mov eax, [ebp-0x10]
+mov [ebp-0x44], eax
+mov eax, [ebp-0x8]
+mov [ebp-0x40], eax
+lea eax, [ebp-0x48]
+push eax
+lea eax, [ebp-0x48]
+push eax
+call FUNC_001519
+add esp, 8
+
+	push dword [ebp-0x40]
+	push dword [ebp-0x44]
+	push dword [ebp-0x48]
+	push dword pLogString4
+	push dword [logfile]
+	call _fprintf
+	call _fflush
+	add esp, 20
+
+; Velocity
+; Vec32Sub (veldiff, p2+0x8c, p1+0x8c)
+mov eax, [esi+0x8c]
+sub eax, [ebx+0x8c]
+mov [ebp-0x54], eax
+mov eax, [esi+0x90]
+sub eax, [ebx+0x90]
+mov [ebp-0x50], eax
+mov eax, [esi+0x94]
+sub eax, [ebx+0x94]
+mov [ebp-0x4c], eax
+
+	push dword [ebp-0x4c]
+	push dword [ebp-0x50]
+	push dword [ebp-0x54]
+	push dword pLogString5
+	push dword [logfile]
+	call _fprintf
+	call _fflush
+	add esp, 20
+
+; veldiffmag = -2 * Vec32Dot (colldir32, veldiff)
+push dword [ebp-0x54]
+push dword [ebp-0x48]
+call FUNC_001521
+add esp, 8
+push eax
+push dword [ebp-0x50]
+push dword [ebp-0x44]
+call FUNC_001521
+add esp, 8
+pop edx
+add eax, edx
+push eax
+push dword [ebp-0x4c]
+push dword [ebp-0x40]
+call FUNC_001521
+add esp, 8
+pop edx
+add eax, edx
+
+	push eax
+	push dword pLogString6
+	push dword [logfile]
+	call _fprintf
+	call _fflush
+	add esp, 8
+	pop eax
+
+; -2 times, check negative. 
+add eax, eax
+neg eax
+test eax, eax
+jl near JUMP_002457
+
+; Vec32Mul (veldiff, colldir32, veldiffmag)
+mov edi, eax
+push edi
+push dword [ebp-0x48]
+call FUNC_001521
+add esp, 8
+mov [ebp-0x54], eax
+push edi
+push dword [ebp-0x44]
+call FUNC_001521
+add esp, 8
+mov [ebp-0x50], eax
+push edi
+push dword [ebp-0x40]
+call FUNC_001521
+add esp, 8
+mov [ebp-0x4c], eax
+
+	push dword [ebp-0x4c]
+	push dword [ebp-0x50]
+	push dword [ebp-0x54]
+	push dword pLogString5
+	push dword [logfile]
+	call _fprintf
+	call _fflush
+	add esp, 20
+
+; Vec32Add (p2+0x8c, p2+0x8c, veldiff)
+mov eax, [ebp-0x54]
+add [esi+0x8c], eax
+mov eax, [ebp-0x50]
+add [esi+0x90], eax
+mov eax, [ebp-0x4c]
+add [esi+0x94], eax
+
+; Apply damage. veldiffmag * w[p2+0xe4] / factor
+push dword [esi+0x82]
+call FUNC_001538
+add esp, 4
+mov eax, [eax+0x38]
+movzx eax, word [eax+0x6]
+xor edx, edx
+mul edi
+mov ecx, 10000
+div ecx
+mov edi, eax
+
+		movzx eax, byte [esi+0x86]
+		push eax
+		push edi
+		push ebx
+		call FUNC_000953
+		add esp,byte +0xc
+
+		movzx eax, byte [ebx+0x86]
+		push eax
+		push edi
+		push esi
+		call FUNC_000953
+		add esp,byte +0xc

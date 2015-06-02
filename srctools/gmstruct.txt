@@ -1,0 +1,343 @@
+Label			size		offset		usage
+
+DATA_008804:	resb 1	;	0x0000		gametics		
+DATA_008805:	resb 2  ;	0x0001		-
+DATA_008806:	resb 1	;	0x0003		-
+DATA_008807:	resb 4	;	0x0004		gamedays
+DATA_008808:	resb 4	;	0x0008
+DATA_008809:	resb 1	;	0x000c		flag for flip-every-frame
+DATA_008810:	resb 1	;	0x000d
+DATA_008811:	resb 1	;	0x000e		frame counter?
+				resb 1	;	0x000f		
+DATA_008812:	resb 4	;	0x0010		graphics detail related - -1/0/1
+DATA_008813:	resb 4	;	0x0014		graphics detail related - -2/0/1
+				resb 4	;	0x0018		graphics detail related - 0x4100/0x4030/0
+DATA_008814:	resb 4	;	0x001c		background flag?
+DATA_008815:	resb 1	;	0x0020		3-byte background col
+DATA_008816:	resb 1	;	0x0021		-
+DATA_008817:	resb 2	;	0x0022		-
+DATA_008818:	resb 3	;	0x0024		random seed part 1
+DATA_008819:	resb 1	;	0x0027		-
+DATA_008820:	resb 4	;	0x0028		random seed part 2
+DATA_008821:	resb 4	;	0x002c		Vector32
+DATA_008822:	resb 4	;	0x0030		+
+DATA_008823:	resb 4	;	0x0034		+
+DATA_008824:	resb 4	;	0x0038		Vector32
+DATA_008825:	resb 4	;	0x003c		+
+DATA_008826:	resb 4	;	0x0040		+
+DATA_008827:	resb 4	;	0x0044		Vector32
+DATA_008828:	resb 4	;	0x0048		+
+DATA_008829:	resb 4	;	0x004c		+
+DATA_008830:	resb 4	;	0x0050
+DATA_008831:	resb 24	;	0x0054		lighting
+DATA_008832:	resb 2	;	0x006c		mouse click xpos
+DATA_008833:	resb 2	;	0x006e		mouse click ypos
+DATA_008834:	resb 4	;	0x0070		total 0x20 type objects
+DATA_008835:	resb 1	;	0x0074		Intro wraparound flag, 0x40 wind playing
+DATA_008836:	resb 1	;	0x0075		current laser info byte
+				resb 4	;	0x0076		event 0x15 time, tics
+DATA_008837:	resb 4	;	0x007a		event 0x15 time, days
+DATA_008838:	resb 2	;	0x007e
+				resb 8	;	0x0080		seconds timeout for maintenance
+DATA_008839:	resb 4	;	0x0088		combat velocity fudge vector
+DATA_008840:	resb 4	;	0x008c		-
+DATA_008841:	resb 4	;	0x0090		-
+DATA_008842:	resb 4	;	0x0094		combat velocity fudge speed?
+DATA_008843:	resb 4	;	0x0098		sysgen random1
+DATA_008844:	resb 4	;	0x009c		sysgen random2
+DATA_008845:	resb 4	;	0x00a0		sysgen name pointer
+DATA_008846:	resb 4	;	0x00a4		sysgen planet+star count
+DATA_008847:	resb 1	;	0x00a8		sysgen planet count
+DATA_008848:	resb 1	;	0x00a9		sysgen star count
+DATA_008849:	resb 1	;	0x00aa		sysgen current tree depth
+DATA_008850:	resb 1	;	0x00ab		sysgen max real stars?
+DATA_008851:	resb 2	;	0x00ac		sysgen stars left to gen?
+DATA_008852:	resb 4	;	0x00ae		sysgen original randseed
+DATA_008853:	resb 4	;	0x00b2		sysgen systemcode
+DATA_008854:	resb 4	;	0x00b6		sysgen population?
+DATA_008855:	resb 1	;	0x00ba		sysgen station count?
+DATA_008856:	resb 5	;	0x00bb		sysgen starport+station count
+DATA_008857:	resb 4	;	0x00c0		player object index
+DATA_008858:	resb 1	;	0x00c4		missile index to launch? 1+
+DATA_008859:	resb 1	;	0x00c5		starport object index
+DATA_008860:	resb 2	;	0x00c6		flags, mostly warnings
+DATA_008861:	resb 4	;	0x00c8		player object ptr
+DATA_008862:	resb 4	;	0x00cc		starport object ptr
+DATA_008863:	resb 2	;	0x00d0		x accum value
+DATA_008864:	resb 2	;	0x00d2		y accum value
+DATA_008865:	resb 4	;	0x00d4		player speed exponent
+DATA_008866:	resb 4	;	0x00d8		player speed
+DATA_008867:	resb 4	;	0x00dc		player altitude? 0x1312d00 cutoff
+DATA_008868:	resb 4	;	0x00e0		difference between E5 calls, tics
+DATA_008869:	resb 4	;	0x00e4		difference between E5 calls, days
+DATA_008870:	resb 1	;	0x00e8		player state
+DATA_008871:	resb 1	;	0x00e9		player interface flags
+DATA_008872:	resb 1	;	0x00ea		player view
+DATA_008873:	resb 1	;	0x00eb		time spent hanging around starport
+DATA_008874:	resb 1	;	0x00ec		navigation target index
+DATA_008875:	resb 1	;	0x00ed		combat target index
+DATA_008876:	resb 1	;	0x00ee		flag for targeter return
+DATA_008877:	resb 1	;	0x00ef		last missile object index
+DATA_008878:	resb 4	;	0x00f0		launch permission given flag
+DATA_008879:	resb 4	;	0x00f4		player starport bay allocated
+DATA_008880:	resb 2	;	0x00f8		set to zero when starport-docked
+DATA_008881:	resb 4	;	0x00fa		start type 0-default, 1-Ross154 etc
+				resb 4	;	0x00fe
+DATA_008882:	resb 2	;	0x0102		target range mantissa
+DATA_008883:	resb 2	;	0x0104		target range exponent
+DATA_008884:	resb 4	;	0x0106		timeout counter - docking, HS.
+DATA_008885:	resb 4	;	0x010a		current system? passed to F857
+DATA_008886:	resb 4	;	0x010e		time to target
+DATA_008887:	resb 2	;	0x0112		last messaging object index
+DATA_008888:	resb 4	;	0x0114		player cash
+DATA_008889:	resb 4	;	0x0118		cargo space total (after equipment)
+DATA_008890:	resb 4	;	0x011c		cabins total (possible error)
+DATA_008891:	resb 4	;	0x0120		cargo space used?
+DATA_008892:	resb 4	;	0x0124		cabins used?
+DATA_008893:	resb 4	;	0x0128		external y-rotation
+DATA_008894:	resb 4	;	0x012c		external x-rotation
+DATA_008895:	resb 4	;	0x0130		external zoom
+DATA_008896:	resb 8	;	0x0134		array of 32 words - cargo
+DATA_008897:	resb 10	;	0x013c		cargo - animal meat
+DATA_008898:	resb 4	;	0x0146		cargo - fertilizer
+DATA_008899:	resb 2	;	0x014a		cargo - live animals
+DATA_008900:	resb 14	;	0x014c		cargo - slaves
+DATA_008901:	resb 2	;	0x015a		cargo - hydrogen fuel
+DATA_008902:	resb 18	;	0x015c		cargo - military fuel
+DATA_008903:	resb 2	;	0x016e		cargo - radioactives
+DATA_008904:	resb 4	;	0x0170		cargo - rubbish
+				resb 6	;	0x0174		cargo - chaff
+DATA_008905:	resb 4	;	0x017a
+DATA_008906:	resb 2	;	0x017e
+DATA_008907:	resb 4	;	0x0180		fuel used for HS
+DATA_008908:	resb 4	;	0x0184		array of 6 dwords
+DATA_008909:	resb 4	;	0x0188		*
+DATA_008910:	resb 16	;	0x018c		*
+DATA_008911:	resb 4	;	0x019c		Elite ranking points
+DATA_008912:	resb 4	;	0x01a0		Fed military ranking points
+DATA_008913:	resb 4	;	0x01a4		Imp military ranking points
+DATA_008914:	resb 4	;	0x01a8
+DATA_008915:	resb 4	;	0x01ac		three systems back
+DATA_008916:	resb 4	;	0x01b0		two systems back
+DATA_008917:	resb 4	;	0x01b4		previous system?
+DATA_008918:	resb 4	;	0x01b8		set speed
+DATA_008919:	resb 22	;	0x01bc		copy of commander name?
+DATA_008920:	resb 22	;	0x01d2		copy of commander name?
+				resb 4	;	0x01e8		time delay for scooping?
+DATA_008921:	resb 4	;	0x01ec		cabin temperature
+DATA_008922:	resb 4	;	0x01f0
+DATA_008923:	resb 4	;	0x01f4		equipment failure timeout in 30hr units
+DATA_008924:	resb 4	;	0x01f8		drive failure timeout in 30hr units
+DATA_008925:	resb 4	;	0x01fc		last drive maintenance?
+DATA_008926:	resb 4	;	0x0200		last equip maintenance?
+DATA_008927:	resb 2	;	0x0204		turret y-rotation
+DATA_008928:	resb 2	;	0x0206		turret x-rotation
+DATA_008929:	resb 2	;	0x0208		turret facing x-val
+DATA_008930:	resb 2	;	0x020a		turret facing y-val
+DATA_008931:	resb 2	;	0x020c		turret facing z-val
+DATA_008932:	resb 2	;	0x020e		current starport index
+DATA_008933:	resb 2	;	0x0210		roll correction req'd
+DATA_008934:	resb 2	;	0x0212		0x1 docked, 0x20 if RFOR
+DATA_008935:	resb 4	;	0x0214		thruster g
+DATA_008936:	resb 4	;	0x0218		thruster g
+DATA_008937:	resb 4	;	0x021c		thruster g
+DATA_008938:	resb 4	;	0x0220		thruster g
+DATA_008939:	resb 4	;	0x0224		thruster g
+DATA_008940:	resb 4	;	0x0228		thruster g
+DATA_008941:	resb 5	;	0x022c
+DATA_008942:	resb 5	;	0x0231
+DATA_008943:	resb 4	;	0x0236
+DATA_008944:	resb 4	;	0x023a
+DATA_008945:	resb 4	;	0x023e
+DATA_008946:	resb 4	;	0x0242
+DATA_008947:	resb 4	;	0x0246
+DATA_008948:	resb 4	;	0x024a
+DATA_008949:	resb 2	;	0x024e		stalks 0x20, grid 0x1, trade 0x8, names 0x40
+DATA_008950:	resb 4	;	0x0250		galgen player system vector
+DATA_008951:	resb 4	;	0x0254		-
+DATA_008952:	resb 4	;	0x0258		-
+				resb 12	;	0x025c		galgen target system vector
+DATA_008953:	resb 1	;	0x0268
+DATA_008954:	resb 1	;	0x0269
+				resb 1	;	0x026a		galgen primary star type
+				resb 1	;	0x026b		filler
+DATA_008955:	resb 4	;	0x026c		galgen range to target system
+				resb 4	;	0x0270		
+DATA_008956:	resb 4	;	0x0274		galgen rand1 for current star
+DATA_008957:	resb 4	;	0x0278		galgen rand2 for current star
+DATA_008958:	resb 3	;	0x027c
+DATA_008959:	resb 1	;	0x027f
+DATA_008960:	resb 4	;	0x0280		Read with F869...
+DATA_008961:	resb 8	;	0x0284		-
+DATA_008962:	resb 8	;	0x028c		-
+DATA_008963:	resb 4	;	0x0294		galgen fuel required
+DATA_008964:	resb 1	;	0x0298
+DATA_008965:	resb 1	;	0x0299
+DATA_008966:	resb 4	;	0x029a
+DATA_008967:	resb 6	;	0x029e
+DATA_008968:	resb 24	;	0x02a4
+DATA_008969:	resb 4	;	0x02bc
+DATA_008970:	resb 4	;	0x02c0
+DATA_008971:	resb 5	;	0x02c4
+DATA_008972:	resb 25	;	0x02c9
+DATA_008973:	resb 4	;	0x02e2
+DATA_008974:	resb 4	;	0x02e6
+DATA_008975:	resb 4	;	0x02ea
+DATA_008976:	resb 4	;	0x02ee
+DATA_008977:	resb 4	;	0x02f2
+DATA_008978:	resb 4	;	0x02f6
+DATA_008979:	resb 252;	0x02fa
+DATA_008980:	resb 2	;	0x03f6		last correct
+DATA_008981:	resb 2	;	0x03f8
+DATA_008982:	resb 1	;	0x03fa		names 0x2, orbits 0x4
+DATA_008983:	resb 1	;	0x03fb
+DATA_008984:	resb 2	;	0x03fc
+DATA_008985:	resb 2	;	0x03fe
+DATA_008986:	resb 4	;	0x0400
+DATA_008987:	resb 4	;	0x0404
+DATA_008988:	resb 4	;	0x0408
+DATA_008989:	resb 32	;	0x040c		system flags for cargo array
+DATA_008990:	resb 6	;	0x042c		more of the cargo flags
+DATA_008991:	resb 2	;	0x0432		current system pop
+DATA_008992:	resb 2	;	0x0434		current system danger
+DATA_008993:	resb 2	;	0x0436		chance of military ship
+DATA_008994:	resb 2	;	0x0438		chance of civilian ship
+DATA_008995:	resb 2	;	0x043a
+DATA_008996:	resb 2	;	0x043c		allegiance of current system?
+				resb 4	;	0x043e
+DATA_008997:	resb 4	;	0x0442		current system starport count
+DATA_008998:	resb 4	;	0x0446		rev. random val of last starport
+DATA_008999:	resb 304;	0x044a		starport object array base
+DATA_009000:	resb 14132;	0x057a		offset of object index byte
+DATA_009001:	resb 4	;	0x3cae		maximum military missions
+DATA_009002:	resb 4	;	0x3cb2		major rank
+DATA_009003:	resb 4	;	0x3cb6		minor rank
+DATA_009004:	resb 529;	0x3cba		25 24-byte military mission structs
+DATA_009005:	resb 95	;	0x3ecb
+DATA_009006:	resb 4	;	0x3f2a		Used for missing person ad
+DATA_009007:	resb 4	;	0x3f2e		-
+DATA_009008:	resb 4	;	0x3f32		-
+DATA_009009:	resb 4	;	0x3f36		-
+DATA_009010:	resb 4	;	0x3f3a		
+DATA_009011:	resb 4	;	0x3f3e		station (not starport) count
+				resb 2	;	0x3f42
+DATA_009012:	resb 4	;	0x3f44		current accel value in gametics
+DATA_009013:	resb 4	;	0x3f48		related to accel value
+DATA_009014:	resb 1	;	0x3f4c		low detail
+DATA_009015:	resb 1	;	0x3f4d		medium detail
+DATA_009016:	resb 1	;	0x3f4e		high detail
+DATA_009017:	resb 1	;	0x3f4f		very high detail
+				resb 1	;	0x3f50
+DATA_009018:	resb 1	;	0x3f51		space dust, clouds etc flag
+DATA_009019:	resb 1	;	0x3f52		background stars
+DATA_009020:	resb 1	;	0x3f53		lock external view to ship
+DATA_009021:	resb 1	;	0x3f54		reverse left-right controls
+DATA_009022:	resb 1	;	0x3f55		reverse up-down controls
+DATA_009023:	resb 1	;	0x3f56		elite control in space
+DATA_009024:	resb 1	;	0x3f57		show targeting tunnels
+DATA_009025:	resb 1	;	0x3f58		allow targeting tunnels for ships
+DATA_009026:	resb 1	;	0x3f59		use filename extensions
+DATA_009027:	resb 1	;	0x3f5a		video
+				resb 1	;	0x3f5b
+DATA_009028:	resb 1	;	0x3f5c		sound effects on
+DATA_009029:	resb 1	;	0x3f5d		music on
+DATA_009030:	resb 1	;	0x3f5e		engine sound
+DATA_009031:	resb 1	;	0x3f5f		music after hyperspace
+DATA_009032:	resb 1	;	0x3f60		space station
+DATA_009033:	resb 1	;	0x3f61		docking music
+DATA_009034:	resb 1	;	0x3f62		wind noise
+DATA_009035:	resb 1	;	0x3f63		music in battles
+DATA_009036:	resb 1	;	0x3f64		icon beeps
+DATA_009037:	resb 1	;	0x3f65		continuous music
+DATA_009038:	resb 17	;	0x3f66		song flags
+				resb 1	;	0x3f77		
+DATA_009039:	resb 1	;	0x3f78		stalks
+DATA_009040:	resb 1	;	0x3f79		grid
+DATA_009041:	resb 1	;	0x3f7a		trade routes
+DATA_009042:	resb 1	;	0x3f7b		names text
+DATA_009043:	resb 1	;	0x3f7c		orbits
+				resb 51	;	0x3f7d
+DATA_009044:	resb 1	;	0x3fb0		SysMenu state: 1=other, 2=save, 3=load, 4=delete
+				resb 1	;	0x3fb1
+DATA_009045:	resb 4	;	0x3fb2		set by F706 - E6 function
+DATA_009046:	resb 1	;	0x3fb6		engine damaged?
+DATA_009047:	resb 115;	0x3fb7
+DATA_009048:	resb 2216;	0x402a		base of ServEntry structures
+DATA_009049:	resb 4	;	0x48d2		timeout?
+DATA_009050:	resb 4	;	0x48d6		first ServEntry displayed
+DATA_009051:	resb 4	;	0x48da		number of ServEntries (max 0x2d)
+DATA_009052:	resb 5	;	0x48de		current services screen name ffcode
+				resb 1	;	0x48e2
+DATA_009053:	resb 1	;	0x48e3
+				resb 4	;	0x48e4
+DATA_009054:	resb 4	;	0x48e8		current services screen index
+DATA_009055:	resb 4	;	0x48ec
+DATA_009056:	resb 4	;	0x48f0
+DATA_009057:	resb 4	;	0x48f4
+DATA_009058:	resb 4	;	0x48f8		current station pointer
+DATA_009059:	resb 4	;	0x48fc		agreed payment flags
+DATA_009060:	resb 4	;	0x4900		agreed mission payment
+				resb 24	;	0x4904
+DATA_009061:	resb 4	;	0x491c		services blitback timeout
+DATA_009062:	resb 1	;	0x4920
+DATA_009063:	resb 1	;	0x4921
+DATA_009064:	resb 8	;	0x4922
+DATA_009065:	resb 2	;	0x492a
+DATA_009066:	resb 200;	0x492c
+DATA_009067:	resb 4	;	0x49f4
+DATA_009068:	resb 4	;	0x49f8
+DATA_009069:	resb 4	;	0x49fc
+DATA_009070:	resb 8	;	0x4a00
+DATA_009071:	resb 8	;	0x4a08
+DATA_009072:	resb 8	;	0x4a10
+DATA_009073:	resb 4	;	0x4a18		number in parcel/pass. roster
+DATA_009074:	resb 4	;	0x4a1c
+DATA_009075:	resb 20	;	0x4a20
+DATA_009076:	resb 4	;	0x4a34
+DATA_009077:	resb 1	;	0x4a38
+DATA_009078:	resb 1	;	0x4a39
+DATA_009079:	resb 4	;	0x4a3a		base of parcel/pass. roster
+DATA_009080:	resb 12	;	0x4a3e
+DATA_009081:	resb 1184;	0x4a4a
+DATA_009082:	resb 1	;	0x4eea
+DATA_009083:	resb 5	;	0x4eeb
+DATA_009084:	resb 4	;	0x4ef0		number in mission roster
+DATA_009085:	resb 312;	0x4ef4		base of mission roster
+DATA_009086:	resb 4	;	0x502c		correct number of crew
+DATA_009087:	resb 4	;	0x5030		current number of crew
+DATA_009088:	resb 4	;	0x5034
+DATA_009089:	resb 156;	0x5038
+DATA_009090:	resb 4	;	0x50d4		last correct
+DATA_009091:	resb 4	;	0x50d8
+DATA_009092:	resb 4	;	0x50dc
+DATA_009093:	resb 14	;	0x50e0
+DATA_009094:	resb 10	;	0x50ee
+DATA_009095:	resb 4	;	0x50f8		alliance fine
+DATA_009096:	resb 4	;	0x50fc		fed fine
+DATA_009097:	resb 16	;	0x5100		imp fine, interpol, thargoid...
+DATA_009098:	resb 1	;	0x5110
+DATA_009099:	resb 1	;	0x5111
+DATA_009100:	resb 2	;	0x5112
+DATA_009101:	resb 4	;	0x5114
+DATA_009102:	resb 1	;	0x5118		num asteroids
+DATA_009103:	resb 1	;	0x5119		max asteroids
+DATA_009104:	resb 4	;	0x511a		MB4 count...
+DATA_009105:	resb 4	;	0x511e		MB4 count?
+DATA_009106:	resb 4	;	0x5122		Base of MB4 list?
+DATA_009107:	resb 1	;	0x5126
+DATA_009108:	resb 25	;	0x5127
+DATA_009109:	resb 1	;	0x5140
+DATA_009110:	resb 1	;	0x5141
+DATA_009111:	resb 20	;	0x5142
+DATA_009112:	resb 468;	0x5156
+DATA_009113:	resb 2	;	0x532a
+DATA_009114:	resb 4	;	0x532c		Hyperspace time	
+DATA_009115:	resb 4	;	0x5330		Hyperspace distance
+DATA_009116:	resb 4	;	0x5334		current song index
+				resb 512;	0x5335		
+DATA_009117:	resb 20	;	0x5538		savegame name	
+DATA_009118:	resb 2	;	0x554c		._ of savegame ext
+DATA_009119:	resb 1	;	0x554e		second-last char in savegame ext
+DATA_009120:	resb 3	;	0x554f		last char in savegame ext
+DATA_009121:	resb 26	;	0x5552		copy of commander name
+			; TOTAL			0x556c

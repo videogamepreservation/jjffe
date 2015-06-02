@@ -1,0 +1,179 @@
+// Data modified:
+
+b[D8711]	bit 0x80 - signifies hit
+[D8712]		used to set [p1+0xe6]
+[D8714]		PhysObj ptr hit
+D8715		Vec64 * hit position
+
+D8744		non-rot lasdir (Vec32)
+D8747		non-rot laspos (Vec64)
+D8753		rot lasdir (Vec32)
+D8756		rot laspos (Vec64)
+b[D8766]	rotational lasdir, laspos valid
+
+// Utility function for rotational FORs?
+// Generates non-rotational lasdir, laspos from rotational
+
+void F814 ()
+{
+	VecMatMul (D8744, D8753, [D8764]);	// rotate lasdir
+	Vec64Copy (D8747, D8756);
+	ebx = Vec64Truncate (D8747, 0x1c);
+	Vec64to32 (&tv, D8747);
+	VecMatMul (&tv, &tv, [D8764]);	// rotate position
+	F1517 (D8747, &tv, ebx);		// convert back to Vec64
+}
+
+// Generates rotational lasdir, laspos from non-rotational
+
+void F815 (Vec64 *p1)
+{
+	VecMatTMul (D8753, D8744, [D8764]);		// rotate lasdir
+	Vec64Copy (p1, D8747);
+	esi = Vec64Truncate (p1, 0x1c);
+	Vec64to32 (&tv, p1);
+	VecMatTMul (&tv, &tv, [D8764]);
+	F1517 (D8756, &tv, esi);
+	Vec64Copy (p1, D8756);
+}
+
+// Function to detect laser impacts
+
+F817 (PhysObj *origobj, PhysObjList *p2, Vec32 *lasoff, Vec32 *lasdir,
+	int ignoreobj, 0x7fffff, 0, 0x1a80)
+{
+	b[D8711] = b[D8757] = b[D8758] = b[D8759] = 0;
+	b[D8767] = p8 >> 8;
+	Vec32Copy (D8735, p4);		// make copy of lasdir
+	[D8775] = p5;				// ignored object index
+	[D8733] = p6; [D8734] = p7;
+	[D8712] = p6; [D8713] = p7;		// min/max?
+
+	esi = F1532 (b[p1+0x56], p2);	// get parent ptr
+	[D8764] = [D8714] = esi;
+	s5.b3 = b[esi+0x56];		// parent of parent index
+
+	Vec32to64 (D8738, p3);		// expansion of lasoff
+	Vec64Add (D8738, p1+0x3e);	// total laser pos
+	if (b[p1+0x57] != 0) {
+		Vec32Copy (D8753, D8735);
+		Vec64Copy (D8756, D8738);
+		b[D8766] = 1;
+		F814 ();		// Generate D8744, D8747 non-rot vectors
+	}
+	else {
+		Vec32Copy (D8744, D8735);
+		Vec64Copy (D8747, D8738);
+		b[D8766] = 0;
+	}
+
+	// J3230:
+
+	s5.b2 = b[p1+0x56];
+	for (ebx=0x72, s7=p2+0x72; ebx>0; ebx--, s7--)
+	{
+		if (!(b[s7] & 4)) continue;
+		if (ebx == p5) continue;
+		edi = F1532 (ebx, p2);
+		if (b[edi+0x8b] != 0) continue;		// per-frame update!
+
+		if (s5.b2 == b[edi+0x56]) {		// target has same parent
+			if (b[edi+0x57] != 0) {
+				esi = D8753;
+				if (b[D8766] != 0) Vec64Copy (ebp-0x40, D8756);
+				else {
+					b[D8766] = 1;
+					F815 (ebp-0x40);
+				}
+				b[D8760] = 1;
+			}
+			else {
+				esi = 0x8744;
+				Vec64Copy (ebp-0x40, D8747);
+				b[D8760] = 0;
+			}
+			Vec64Sub (ebp-0x40, edi+0x3e);
+		}
+		else if (ebx == s5.b2) {	// target is parent, J3236
+			
+
+		}
+		else {
+
+
+		}
+		// J3243
+
+		F819 (ebp-0x40, edi, esi);		// laspos, targobj, lasdir
+
+	}	// J3244
+
+	// stuff
+}
+
+// laspos relative to target
+
+void F819 (Vec64 *laspos, PhysObj *targobj, Vec32 *lasdir)
+{
+	if (b[p2+0x14c] >= 0 || b[D8767] & 0x40) {	// complex stuff
+		F826 (p1, p2, p3);
+		return;
+	}
+
+	Int64Add64 (ebp-0x8, [p2+0x138], [p2+0x13c], [D8712], [D8713]);
+
+	if (p1->hz < 0) { s7 = ~p1->lz; s6 = ~p1->hz; }
+	else { s7 = p1->lz; s6 = p1->hz; }
+ 	if (s6 > s1 || s6 == s1 && s7 >=(us) s2) return;
+
+	if (p1->hy < 0) { s9 = ~p1->ly; s8 = ~p1->hy; }
+	else { s9 = p1->ly; s8 = p1->hy; }
+	if (s8 > s1 || s8 == s1 && s9 >=(us) s2) return;
+
+	if (p1->hx < 0) { s11 = ~p1->lx; s10 = ~p1->hx; }
+	else { s11 = p1->lx; s10 = p1->hx; }
+	if (s10 > s1 || s11 == s1 && s10 >=(us) s2) return;
+
+	// J3267
+
+	s4 = [p2+0x138]; s3 = [p2+0x13c];
+	esi = s6 | s8 | s10 | [D8713] | s3;
+	if (esi != 0) esi = FindMSB (esi) + 3;
+	else {
+		esi = FindMSB (s7 | s9 | s11 | [D8712] | s4) - 0x1d;
+		if (esi < 0) esi = 0;
+	}
+	Vec64Shift (p1, -esi);
+	Vec64Shift (&s11, -esi);
+	Int64ArithShift (&s4);
+	s1 = [D8713]; s2 = [D8712];
+	Int64ArithShift (&s2);
+	Vec64to32 (ebp-0x38, p1);
+	ebx = s4; [D8765] = s2;
+
+	edx = F1521 (p3->y<<16, [ebp-0x30]);
+	eax = F1521 (p3->z<<16, [ebp-0x34]);
+	if (ebx < abs (edx - eax)) return;
+	edx = F1521 (p3->z<<16, [ebp-0x38]);
+	eax = F1521 (p3->x<<16, [ebp-0x30]);
+	if (ebx < abs (edx - eax)) return;
+	edx = F1521 (p3->x<<16, [ebp-0x34]);
+	eax = F1521 (p3->y<<16, [ebp-0x38]):
+	if (ebx < abs (edx - eax)) return;
+
+	if (b[D8767] & 1) 
+	{
+		ebx = F1521 ([ebp-0x38]<<16, p3->x);
+		ebx += F1521 ([ebp-0x34]<<16, p3->y);
+		ebx += F1521 ([ebp-0x30]<<16, p3->z);
+		if (ebx < 0 || ebx > [D8756]) return;
+	
+		// more stuff
+		return;
+	}
+
+	// J3270
+
+	ebx = F1538 ([p2+0x82]);
+	
+}

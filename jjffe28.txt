@@ -1,0 +1,76 @@
+*******************************************************************
+|                                                                 |
+|               Documentation for JJFFE version 2.8               |
+|  Original game copyright David Braben or Frontier Developments  |
+|       This version decompiled and modified by John Jordan       |
+|                    (john@jaj22.org.uk)                          |
+|                                                                 |
+*******************************************************************
+
+Warning: This is a hacked and reverse engineered version of a commercial game. Therefore it's probably illegal to own it even if you bought the original. It will be removed rapidly if anybody complains.
+
+JJFFE now has a webpage containing FAQs and detailed information on all versions. Please visit it at http://jaj22.org.uk/jjffe/. This file contains a small subset of the information on the web page.
+
+
+Installation instructions:
+
+JJFFE is only a replacement executable and config files for FFE, not the complete game. It will run on its own, but will not have music, sound effects, journals or the cabin backgrounds for the larger ships. It should be unzipped over a complete FFE installation for full functionality. There are essentially three different types of FFE installation, which each require a different installation process.
+
+If you don't already have a copy of FFE, the shareware version can be obtained from Frontier Developments (http://www.eliteclub.co.uk/download/).
+
+
+Installing with the shareware version of FFE:
+
+Unzip the shareware version of FFE into a suitable directory, making sure that directory structure is preserved. Then unzip JJFFE into the Game directory inside that directory. This is usually C:\firstenc\game.
+
+Installing over the original disk version of FFE:
+
+Install FFE into a suitable directory. Then unzip JJFFE directly into that directory.
+
+Installing over the original CD version of FFE:
+
+Copy the entire CD into a suitable directory on the hard drive. Then unzip JJFFE directly into that directory. Don't bother using the installer on the CD.
+
+Alternatively, if you don't want to waste 300 MB of hard disk space on the videos, copy everything except the Data folder onto the hard drive, then modify the config file to point at the CD drive.
+
+
+Checking installation:
+
+To make sure that you've installed it properly, check that the JJFFE executable (program file) is in the same directory as the file mission.dat, the fx and music folders and the cabin*.bmp files.
+
+Sound configuration:
+
+For the DOS/HMI version, run setup.exe to configure the soundcard. If this doesn't work, check out the DJGPP version info on the JJFFE web page. All other versions autoconfigure sound.
+
+Running the game:
+
+To run the game, always run the JJFFE executable directly rather than using the firstenc.bat file provided in the shareware version of FFE. Note that Ctrl-F12 can be used to toggle fullscreen mode for the DirectX versions.
+
+
+Advanced installation instructions:
+
+Other organisations of installation are possible. There are common rules that you can follow if you know what you're doing:
+
+The journal file (mission.dat) and the cabin background (cabin*.bmp) files must be in the same directory as the JJFFE executable.
+The music files (*.hmp, *.mid) must be in the directory pointed to by [DIR], SongPath in the config file. The default is Music. Note that this directory should have write access - it shouldn't be on a CD.
+The sound effect files (*.raw) must be in the directory pointed to by [DIR], SamplePath in the config file. The default is FX.
+If they exist, the bulletin board video files (*.avi) must be in the directory pointed to by [DIR], AVIPath in the config file. The default is DATA.
+
+
+Controls:
+
+The standard FFE key controls can be found in Jades' FFE FAQ (http://www.jades.org/ffe/). Modifications are as follows:
+
+Refuelling key changed to R.
+F key changed to FPS counter toggle.
+Keys +/- on main keyboard now duplicate function of +/- on number pad.
+Pressing opposite external view keys now resets to original position.
+Keys 6-0 now duplicates function of shift-F1-5 (stardreamer).
+Semicolon and insert (inc. numpad 0) now duplicate function of E (ECM).
+Square bracket keys now perform roll.
+Number pad 8/5 are now forward/reverse thrust in engines off mode.
+Number pad 6/3 and 4/1 are now up/down thrust in engines off mode.
+Number pad 7/9 are now left/right thrust in engines off mode.
+Ctrl-Q now exits the game.
+Keys 1-3 during the intro now select the alternative starts.
+Win32 only: Ctrl-F12 toggles fullscreen/windowed mode.

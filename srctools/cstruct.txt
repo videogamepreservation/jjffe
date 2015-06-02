@@ -1,0 +1,36 @@
+struct StarportStock
+{
+	long price;
+	long stock;
+};		// size 0x8, 8 bytes
+
+struct BBSEntry
+{
+
+};		// size 0x24, 36 bytes
+
+struct ShipyardEntry
+{
+	word modelindex;
+	word tableindex;
+
+};		// size 0x4, 4 bytes
+
+struct Starport
+{
+	offset 0x000: StarportStock pStock[38];		// stock prices
+	offset 0x130: byte objindex;	// object index in [D9133] list
+	offset 0x131: byte flags;		// 0x10 orbital station, 0x1 
+	offset 0x132: BBSEntry pBBS[12];	// BBS adverts
+	offset 0x2e2: int numBBS;		// no. bulletin board entries
+	offset 0x2e6: ShipyardEntry pShip[14];
+	offset 0x31e: int numShips;
+
+};		// size 0x322, 802 bytes
+
+flags:
+0x10 orbital station
+0x1 Goods bought and sold flag - fixed version
+0x2 Goods bought and sold flag - random version
+0x4 Federation military BBS flag
+0x8 Imperial military BBS flag

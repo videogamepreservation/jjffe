@@ -1,0 +1,964 @@
+///////////////////////////////////////////////////////////////////////
+// More physics...
+
+// Orientation update worker function
+
+void F584 (int *p1, int *p2)
+{
+	if ([p1] >= 0x9fb) { [p2] = 2; [p1] = 0x9fb; }
+	else if ([p1] >= 0x511) { [p2] = 3; [p1] = 0x511; }
+	else if ([p1] >= 0x28b) { [p2] = 4; [p1] = 0x28b; }
+	else if ([p1] >= 0x146) { [p2] = 5; [p1] = 0x146; }
+	else if ([p1] >= 0xa3) { [p2] = 6; [p1] = 0xa3; }
+	else if ([p1] >= 0x52) { [p2] = 7; [p1] = 0x52; }
+	else if ([p1] >= 0x29) { [p2] = 8; [p1] = 0x29; }
+	else { [p2] = 9; [p1] = 0x14; }
+}
+
+// Updates orientation
+
+F585 (PhysObj *obj, int phytime, int aiflag, int aitime)
+{
+	esi = p2;
+	if ([p1+0x82] >= 0x35) {
+		esi >>= 1;
+		if ([p1+0x82] >= 0x3b) esi >>= 1;
+	}
+
+	if (p3 != 0) {
+		eax = p4;
+		if (eax >= 0x7fff) eax = 0x7fff;
+		w[p1+0xb0] += eax * w[p1+0x110] >> 16;
+		w[p1+0xb2] += eax * w[p1+0x112] >> 16;
+		w[p1+0xb4] += eax * w[p1+0x114] >> 16;
+	}
+	if (esi >= 0x7fff) esi = 0x7fff;
+
+	s1 = w[p1+0xb0];	// Pitch (x-rot)
+	if (s1 >= 0) {
+		if (esi < s1) s1 = esi;
+		if (s1 >= 0xf) {
+			F584 (&s1, &s2);
+			w[p1+0xb0] -= s1;
+			F611 (p1, p1+0x18, p1+0xc, 0x70, s2);
+		}
+	}
+	else {
+		s1 = -s1;
+		if (esi < s1) s1 = esi;
+		if (s1 >= 0xf) {
+			F584 (&s1, &s2);
+			w[p1+0xb0] += s1;
+			F611 (p1, p1+0x18, p1+0xc, 0x6d, s2);
+		}
+	}
+
+	s1 = w[p1+0xb2];	// Roll (z-rot)
+	if (s1 >= 0) {
+		if (esi < s1) s1 = esi;
+		if (s1 >= 0xf) {
+			F584 (&s1, &s2);
+			w[p1+0xb2] -= s1;
+			F611 (p1, p1+0xc, p1, 0x70, s2);
+		}
+	}
+	else {
+		s1 = -s1;
+		if (esi < s1) s1 = esi;
+		if (s1 >= 0xf) {
+			F584 (&s1, &s2);
+			w[p1+0xb2] += s1;
+			F611 (p1, p1+0xc, p1, 0x6d, s2);
+		}
+	}
+
+	s1 = w[p1+0xb4];	// Yaw (y-rot)
+	if (s1 >= 0) {
+		if (esi < s1) s1 = esi;
+		if (s1 >= 0xf) {
+			F584 (&s1, &s2);
+			w[p1+0xb4] -= s1;
+			F611 (p1, p1, p1+0x18, 0x70, s2);
+			if (b[p1+0x86] == [D8857]) w[D8933] -= s1;		// scanner rotation
+		}
+	}
+	else {
+		s1 = -s1;
+		if (esi < s1) s1 = esi;
+		if (s1 >= 0xf) {
+			F584 (&s1, &s2);
+			w[p1+0xb4] += s1;
+			F611 (p1, p1, p1+0x18, 0x6d, s2);
+			if (b[p1+0x86] == [D8857]) w[D8933] += s1;
+		}
+	}
+}
+
+// Autopilot evade function?
+
+void F586 (PhysObj *p1)
+{
+	w[p1+0x114] = w[p1+0xb6] >> 3;
+	w[p1+0x110] = -(w[p1+0xb8] >> 3);
+}
+
+// Primary autopilot face-target function
+
+void F587 (PhysObj *p1)
+{
+	edx = w[p1+0x108] * ([p1+0xc] >> 16);
+	edx += w[p1+0x10a] * ([p1+0x10] >> 16);
+	edx += w[p1+0x10c] * ([p1+0x14] >> 16);
+	w[p1+0x110] = -edx*2 >> 16;
+
+	edx = w[p1+0x108] * ([p1+0x0] >> 16);
+	edx += w[p1+0x10a] * ([p1+0x4] >> 16);
+	edx += w[p1+0x10c] * ([p1+0x8] >> 16);
+	w[p1+0x114] = edx*2 >> 16;
+
+	w[p1+0x112] = 0;
+	edx = w[p1+0x108] * ([p1+0x18] >> 16);
+	edx += w[p1+0x10a] * ([p1+0x1c] >> 16);
+	edx += w[p1+0x10c] * ([p1+0x20] >> 16);
+	if (edx >= 0) return;
+
+	if (w[p1+0x110] < 0) w[p1+0x110] = -0x4000;
+	else w[p1+0x110] = 0x4000;
+	if (w[p1+0x114] < 0) w[p1+0x114] = -0x4000;
+	else w[p1+0x114] = 0x4000;
+}
+
+// Autopilot face-away-from-target function
+
+void F588 (PhysObj *p1)
+{
+	edx = w[p1+0x108] * ([p1+0xc] >> 16);
+	edx += w[p1+0x10a] * ([p1+0x10] >> 16);
+	edx += w[p1+0x10c] * ([p1+0x14] >> 16);
+	w[p1+0x110] = edx*2 >> 16;
+
+	edx = w[p1+0x108] * ([p1+0x0] >> 16);
+	edx += w[p1+0x10a] * ([p1+0x4] >> 16);
+	edx += w[p1+0x10c] * ([p1+0x8] >> 16);
+	w[p1+0x114] = -edx*2 >> 16;
+
+	w[p1+0x112] = 0;
+	edx = w[p1+0x108] * ([p1+0x18] >> 16);
+	edx += w[p1+0x10a] * ([p1+0x1c] >> 16);
+	edx += w[p1+0x10c] * ([p1+0x20] >> 16);
+	if (edx < 0) return;
+
+	w[p1+0x110] = (w[p1+0x110] >> 8) ^ 0x3fff;
+	w[p1+0x114] = (w[p1+0x114] >> 8) ^ 0x3fff;
+}
+
+// equalises orientation of p1 with p2
+// p3 != 0 => not just roll 
+// special case in rotational FORs
+
+void F589 (PhysObj *p1, PhysObj *p2, int p3)
+{
+	if (b[p1+0x56] == b[p2+0x86]) {		// p2 is parent
+		if (b[p1+0x57] != 0) {
+			w[p1+0x112] = -([p1+0x4] >> 17);		// roll correction. Woo.
+			if (p3 == 0) return;
+			w[p1+0x110] = [p1+0x14] >> 17;
+			w[p1+0x114] = [p1+0x18] >> 17;
+			return;
+		}
+	} else if (b[p1+0x56] != b[p2+0x56]) return;	// not same FOR
+
+	ecx = ([p1+0x0] >> 16) * ([p2+0xc] >> 16);
+	ecx += ([p1+0x4] >> 16) * ([p2+0x10] >> 16);
+	ecx += ([p1+0x8] >> 16) * ([p2+0x14] >> 16);
+	w[p1+0x112] = -ecx >> 16;
+	if (p3 == 0) return;
+
+	ecx = ([p1+0xc] >> 16) * ([p2+0x18] >> 16);
+	ecx += ([p1+0x10] >> 16) * ([p2+0x1c] >> 16);
+	ecx += ([p1+0x14] >> 16) * ([p2+0x20] >> 16);
+	w[p1+0x110] = -ecx >> 16;
+
+	ecx = ([p1+0x18] >> 16) * ([p2+0x0] >> 16);
+	ecx += ([p1+0x1c] >> 16) * ([p2+0x4] >> 16);
+	ecx += ([p1+0x20] >> 16) * ([p2+0x8] >> 16);
+	w[p1+0x114] = -ecx >> 16;						// equalises orientation
+}
+
+// Gets relative position of object
+
+void F590 (PhysObj *p1, PhysObj *p2, Vec32 *p3, int vecshift)
+{
+	F1677 (sb, p1);			// update/fetch global pos
+	F1678 (sb, p2, p1);		// get relative pos
+	[p4] = Vec64Truncate (sb, 0xd); 
+	[p3+0x0] = [sb+0x0];
+	[p3+0x4] = [sb+0x8];
+	[p3+0x8] = [sb+0x10];
+}
+
+// Same but with Vec64 output
+
+void F591 (PhysObj *p1, PhysObj *p2, Vec64 *p3)
+{
+	F1677 (p3, p1);
+	F1678 (p3, p2, p1);
+}
+
+// Same, but adds Vec16 at p1+0x102
+// Transforms output if p1 in RFOR but not p2
+// possibly broken
+
+void F592 (PhysObj *p1, PhysObj *p2, Vec32 *p3, int *vecshift, PhysObjList *p5)
+{
+	F1677 (sb, p1);
+	F593 (p1, p2, sb);
+	[p4] = Vec64Truncate (sb, 0xd); 
+	[p3+0x0] = [sb+0x0];
+	[p3+0x4] = [sb+0x8];
+	[p3+0x8] = [sb+0x10];
+
+	if (b[p1+0x57] != 0 && b[p2+0x57] == 0) {		// interesting...
+		eax = F1532 (b[p1+0x56], p5);
+		VecMatTMul (p3, p3, eax);
+	}
+}
+
+// Wrapper for F1678 that also adds Vec16 at p1+0x102
+
+void F593 (PhysObj *p1, PhysObj *p2, Vec64 *p3)
+{
+	F1678 (p3, p2, p1);		// get relative pos
+
+	eax = w[p1+0x102] << 10;
+	edx = eax >> 31;	// signed
+	ecx = [p3+0x0];
+	edi = ecx + eax;
+	if (ecx > edi) [p3+0x4]++;	// unsigned
+	[p3+0x0] = eax;
+	[p3+0x4] += edx;		// 64-bit add, essentially	
+
+	eax = w[p1+0x104] << 10;
+	edx = eax >> 31;	// signed
+	ecx = [p3+0x8];
+	edi = ecx + eax;
+	if (ecx > edi) [p3+0xc]++;	// unsigned
+	[p3+0x8] = eax;
+	[p3+0xc] += edx;		// 64-bit add, essentially	
+
+	eax = w[p1+0x106] << 10;
+	edx = eax >> 31;	// signed
+	ecx = [p3+0x10];
+	edi = ecx + eax;
+	if (ecx > edi) [p3+0x14]++;	// unsigned
+	[p3+0x10] = eax;
+	[p3+0x14] += edx;		// 64-bit add, essentially	
+}
+
+// Returns relative velocity?
+
+F594 (PhysObj *p1, PhysObj *p2, Vec32 *p3)
+{
+	if (b[p1+0x56] != b[p2+0x86] && b[p1+0x56] == b[p2+0x56]) {
+		F595 (p2, p3);
+		[p3+0x0] -= [p1+0x8c];
+		[p3+0x4] -= [p1+0x90];
+		[p3+0x8] -= [p1+0x94];
+	} else {
+		[p3+0x0] = -[p1+0x8c];
+		[p3+0x4] = -[p1+0x90];
+		[p3+0x8] = -[p1+0x94];
+	}
+}
+
+struct Something
+{
+	ULONG tics, days;
+	PhysObj *pCopy;
+	Vec32 pos;
+};
+
+// Freaky stuff...
+// supposed to get velocity of object
+// broken
+
+F595 (PhysObj *p1, Vec32 *p2)
+{
+	if (b[p1+0x87] != 1) {
+		[p2+0x0] = [p1+0x8c];
+		[p2+0x4] = [p1+0x90];
+		[p2+0x8] = [p1+0x94];
+		return;
+	}
+	if (b[p1+0x14c] & 0x20) {
+		[p2+0x0] = [p2+0x4] = [p2+0x8] = 0;
+		return;
+	}
+	F1533 (sb, p1, 0);		// Create copy of object?
+	s2 = [sb+0xa8]; s1 = [sb+0xac];
+	Something ts.pos = (Vec64)[p1+0x3e];
+	if (s2 > s2 + 0x82c00) s1++;	// unsigned 
+	s2 = s2 + 0x82c00;				// ten seconds advance
+
+	ts.tics = s2; ts.days = s1; ts.pCopy = sb;
+	F866 (&ts);
+	ts.pos -= (Vec64)[p1+0x3e];			// difference - should be sb, not p1
+	ts.pos = -ts.pos >> 10;				// does fuck all?
+	[p2+0x0] = ts.pos.x;
+	[p2+0x4] = ts.pos.y;
+	[p2+0x8] = ts.pos.z;
+}
+
+// Unknown so far
+// Used for initial missile stage
+
+void F596 (PhysObj *p1, PhysObj *p2, hackmod? p3, targdist *p4, 
+	Vec32 *p5, PhysObjList *p6)
+{
+	F594 (p1, p2, p5);				// Get relative velocity
+	s1 = F612 (p5);					// pseudonormalise
+	F592 (p1, p2, &s5, &s2, p6);	// relative position thing. adds 0x102 stuff
+	w[p1+0x108] = s5.w0;
+	w[p1+0x10a] = s4.w0;
+	w[p1+0x10c] = s3.w0;			// target dir/dist vals
+	w[p1+0x10e] = s2.w0;
+	F597 (p1, p2, p3, p4, p5, s1, s2, &tv, p6);
+}
+
+// Autopilot fudge function?
+
+void F597 (PhysObj *p1, PhysObj *p2, p3, p4, Vec32 *relvel, 
+	 int velshift, int targdist, Vec32 *relpos, PhysObjList *p9)
+{
+	s1 = p7;			// distance
+	if ([D9013] != 0)
+	{
+		if (p6 < 2) edx = 2; else edx = p6;		// special case for landing?
+		edx = p7 - edx;						// dist - vel
+		edx -= ([D9013]>>2) + [D9013];		// Time accel mod
+		if (edx <= 8)
+		{
+			b[p1+0x14d] = 0;	// autopilot timeout?
+			b[p2+0x8b] = 0;
+			if (edx < 6 && (w[p1+0x102] | w[p1+0x104] | w[p1+0x106]))
+			{
+				F606 (p1, p9);					// update FOR
+				if (b[p2+0x14c] & 0x20) {		// starport
+					b[p1+0x56] = b[p2+0x56];
+					b[p1+0x57] = b[p2+0x57]; 
+				} else if (b[p2+0x14c] & 0x10) {	// station
+					b[p1+0x56] = b[p2+0x86];
+					b[p1+0x57] = 0;
+				}
+				F594 (p1, p2, &tv);		// get relative velocity
+				[p1+0x8c] += tv.x;
+				[p1+0x90] += tv.y;
+				[p1+0x94] += tv.z;		// equalise velocity
+				F1677 (&tdv, p1);		// eval global pos
+				F593 (p1, p2, &tdv);	// relative pos + 102 mod
+				Vec64Add (p1+0x3e, p1+0x3e, &tdv);	// set
+				b[p1+0x25] = 0;
+				b[p2+0x8a] = b[p2+0x8b] = 0;			// view/render flags
+				[p5+0x0] = [p5+0x4] = [p5+0x8] = 0;		// zero relvel
+				[p1+0xf2] = [p1+0xf6] = [p1+0xfa] = 0;		// unknown
+				w[p1+0xec] = w[p1+0xee] = w[p1+0xf0] = 0;	// unknown
+				w[p1+0xb6] = w[p1+0xb8] = w[p1+0xba] = 0;	// zero accel
+				[p4] = 0;
+				return;
+			}
+		}
+	}
+
+	// J2583
+	s2 = p7 + p3 - 8;		// dist + what?
+	if (s2 >= 0) {
+		if (s2 & 1) {
+			s2 = (s2 >> 1) + 1;
+			(Vec32)[p8] >>= 1;		// relpos
+		}
+		else s2 >>= 1;
+		ecx = F1467 (F1465 (p8) << 16);		// sqrt of magnitude
+		if (ecx != 0) (Vec32)[p8] = ((Vec32)[p8] << 15) / ecx;
+	}
+
+	// J2586
+	eax = p6 - (s2 - 2);	// vel - ...
+	if (eax >= 0) (Vec32)[p5] += (Vec32)[p8] >> eax;
+	else {
+		(Vec32)[p5] = ((Vec32)[p5] >> -eax) + (Vec32)[p8];
+		p6 -= eax;
+	}
+	if (p6 > 0) {
+		if (p6 > 0xc) p6 = 0xc;
+		(Vec32)[p1+0xf2] = (Vec32)[p5] << p6;
+	}
+	else (Vec32)[p1+0xf2] = (Vec32)[p5];
+
+	// J2591
+	VecMatTMul (p5, p5, p1);
+	eax = p6 + 2;
+	if (eax < 0) (Vec32)[p5] >>= -eax;
+	else if (eax > 0) {
+		if (eax > 2) eax = 2;
+		(Vec32)[p5] <<= eax;
+	}
+	[p4] = s1;
+}
+
+// Set thrusters / accel
+// Uses maximum possible - only direction of inaccel used
+
+void F598 (PhysObj *p1, Vec32 *inaccel, Vec32 *outaccel)
+{
+	if ([p2+0x0] >= 0) [p3+0x0] = 0x7fff;
+	else [p3+0x0] = 0xffff8001;
+	if ([p2+0x4] >= 0) [p3+0x4] = 0x7fff;
+	else [p3+0x4] = 0xffff8001;
+	[p3+0x8] = [p2+0x8] << 3;
+
+	if (w[p1+0xbc] < [p3+0x0]) [p3+0x0] = w[p1+0xbc];
+	if (w[p1+0xbe] > [p3+0x0]) [p3+0x0] = w[p1+0xbe];
+
+	if (w[p1+0xc0] < [p3+0x4]) [p3+0x4] = w[p1+0xc0];
+	if (w[p1+0xc2] > [p3+0x4]) [p3+0x4] = w[p1+0xc2];
+
+	if (w[p1+0xc4] < [p3+0x8]) [p3+0x8] = w[p1+0xc4];
+	if (w[p1+0xc6] > [p3+0x8]) [p3+0x8] = w[p1+0xc6];
+
+	w[p1+0xb6] = [p3+0x0]; 
+	w[p1+0xb8] = [p3+0x4]; 
+	w[p1+0xba] = [p3+0x8]; 
+}
+
+// Set thrusters / accel
+// Limits to input by component, doesn't retain direction
+
+void F599 (PhysObj *p1, Vec32 *inaccel, Vec32 *outaccel)
+{
+	(Vec32)[p3] = (Vec32)[p2];
+
+	edx = w[p1+0xbc]; ecx = w[p1+0xbe];
+	if (edx < [p2+0x0]) [p3+0x0] = edx;
+	if (ecx > [p2+0x0]) [p3+0x0] = ecx;
+
+	edx = w[p1+0xc0]; ecx = w[p1+0xc2];
+	if (edx < [p2+0x4]) [p3+0x4] = edx;
+	if (ecx > [p2+0x4]) [p3+0x4] = ecx;
+
+	edx = w[p1+0xc4]; ecx = w[p1+0xc6];
+	if (edx < [p2+0x8]) [p3+0x8] = edx;
+	if (ecx > [p2+0x8]) [p3+0x8] = ecx;
+
+	w[p1+0xb6] = [p3+0x0];
+	w[p1+0xb8] = [p3+0x4];
+	w[p1+0xba] = [p3+0x8];
+}
+
+// Set thrusters / accel
+// Limits to input by magnitude, retains direction
+
+void F600 (p1, Vec32 *inaccel, Vec32 *outaccel)
+{
+	s1 = 0x7fffffff;
+
+	eax = w[p1+0xbc]; edi = w[p1+0xbe];
+	if (eax < [p2+0x0]) s1 = F1523 (eax, [p2+0x0]);		// a/b
+	if (edi > [p2+0x0]) s1 = F1523 (-edi, -[p2+0x0]);
+
+	eax = w[p1+0xc0]; edi = w[p1+0xc2];
+	if (eax < [p2+0x4]) s1 = F1523 (eax, [p2+0x4]);
+	if (edi > [p2+0x4]) s1 = F1523 (-edi, -[p2+0x4]);
+
+	eax = w[p1+0xc4]; edi = w[p1+0xc6];
+	if (eax < [p2+0x8]) s1 = F1523 (eax, [p2+0x8]);
+	if (edi > [p2+0x8]) s1 = F1523 (-edi, -[p2+0x8]);
+
+	[p3+0x0] = F1521 (s1, [p2+0x0]);
+	[p3+0x4] = F1521 (s1, [p2+0x4]);
+	[p3+0x8] = F1521 (s1, [p2+0x8]);
+
+	w[p1+0xb6] = [p3+0x0];
+	w[p1+0xb8] = [p3+0x4];
+	w[p1+0xba] = [p3+0x8];
+}
+
+// Update velocity using timestep/accel
+
+void F601 (PhysObj *p1, ULONG tics)
+{
+	edx = p2 >> 3; esi = -1;
+	if (edx > 0x7fff) esi = 0x10;
+	while (edx > 0x7fff) { edx >>=1; esi--; }
+
+	// Transform thrust vector into global coords, multiply by tics
+	tv = { 0, 0, 0 };
+	if (w[p1+0xb6] != 0) {
+		tv.x = ((([p1+0x0] >> 16) * edx) >> 15) * w[p1+0xb6];
+		tv.y = ((([p1+0x4] >> 16) * edx) >> 15) * w[p1+0xb6];
+		tv.z = ((([p1+0x8] >> 16) * edx) >> 15) * w[p1+0xb6];
+	}
+	if (w[p1+0xb8] != 0) {
+		tv.x += ((([p1+0xc] >> 16) * edx) >> 15) * w[p1+0xb8];
+		tv.y += ((([p1+0x10] >> 16) * edx) >> 15) * w[p1+0xb8];
+		tv.z += ((([p1+0x14] >> 16) * edx) >> 15) * w[p1+0xb8];
+	}
+	if (w[p1+0xba] != 0) {
+		tv.x += ((([p1+0x18] >> 16) * edx) >> 15) * w[p1+0xba];
+		tv.y += ((([p1+0x1c] >> 16) * edx) >> 15) * w[p1+0xba];
+		tv.z += ((([p1+0x20] >> 16) * edx) >> 15) * w[p1+0xba];
+	}
+	tv <<= 1;
+
+	// J2620
+	if (esi < 0) {
+		// small timesteps - simple addition
+		if (edx < 0x4014) {		// 1/3 of a second
+			ecx = w[p1+0xec] + tv.x;
+			w[p1+0xec] = ecx; [p1+0x8c] += ecx >> 16;
+			ecx = w[p1+0xee] + tv.y;
+			w[p1+0xee] = ecx; [p1+0x90] += ecx >> 16;
+			ecx = w[p1+0xf0] + tv.z;
+			w[p1+0xf0] = ecx; [p1+0x94] += ecx >> 16;
+			return;
+		}
+
+		// medium timesteps - capped by f2 vector 
+		ecx = w[p1+0xec] + tv.x; w[p1+0xec] = ecx;
+		ecx >>= 16;	edx = [p1+0xf2];
+		if (edx >= 0) {
+			if (edx < ecx) ecx = edx;
+			if (ecx < 0) ecx = 0;
+		}
+		if (edx < 0) {
+			if (edx > ecx) ecx = edx;
+			if (ecx > 0) ecx = 0;
+		}
+		[p1+0x8c] += ecx;
+
+		ecx = w[p1+0xee] + tv.y; w[p1+0xee] = ecx;
+		ecx >>= 16;	edx = [p1+0xf6];
+		if (edx >= 0) {
+			if (edx < ecx) ecx = edx;
+			if (ecx < 0) ecx = 0;
+		}
+		if (edx < 0) {
+			if (edx > ecx) ecx = edx;
+			if (ecx > 0) ecx = 0;
+		}
+		[p1+0x90] += ecx;
+
+		ecx = w[p1+0xf0] + tv.z; w[p1+0xf0] = ecx;
+		ecx >>= 16;	edx = [p1+0xfa];
+		if (edx >= 0) {
+			if (edx < ecx) ecx = edx;
+			if (ecx < 0) ecx = 0;
+		}
+		if (edx < 0) {
+			if (edx > ecx) ecx = edx;
+			if (ecx > 0) ecx = 0;
+		}
+		[p1+0x94] += ecx;
+		return;
+	}
+
+	// J2634
+	tv >>= esi;
+
+	// large timesteps. Capped by f2, doesn't bother with fractions
+
+	edx = [p1+0xf2];
+	if (edx >= 0) {
+		if (edx < tv.x) tv.x = edx;
+		if (tv.x < 0) tv.x = 0;
+	}
+	if (edx < 0) {
+		if (edx > tv.x) tv.x = edx;
+		if (tv.x > 0) tv.x = 0;
+	}
+
+	edx = [p1+0xf6];
+	if (edx >= 0) {
+		if (edx < tv.y) tv.y = edx;
+		if (tv.y < 0) tv.y = 0;
+	}
+	if (edx < 0) {
+		if (edx > tv.y) tv.y = edx;
+		if (tv.y > 0) tv.y = 0;
+	}
+
+	edx = [p1+0xfa];
+	if (edx >= 0) {
+		if (edx < tv.z) tv.z = edx;
+		if (tv.z < 0) tv.z = 0;
+	}
+	if (edx < 0) {
+		if (edx > tv.z) tv.z = edx;
+		if (tv.z > 0) tv.z = 0;
+	}
+
+	[p1+0x8c] += tv.x;
+	[p1+0x90] += tv.y;
+	[p1+0x94] += tv.z;
+}
+
+// Version of F601 with no f2 cap
+
+F602 (PhysObj *p1, int tics)
+{
+	edx = p2 >> 3; esi = -1;
+	if (edx > 0x7fff) esi = 0x10;
+	while (edx > 0x7fff) { edx >>=1; esi--; }	// signage...
+
+	tv = { 0, 0, 0 };
+	if (w[p1+0xb6] != 0) {
+		tv.x = ((([p1+0x0] >> 16) * edx) >> 15) * w[p1+0xb6];
+		tv.y = ((([p1+0x4] >> 16) * edx) >> 15) * w[p1+0xb6];
+		tv.z = ((([p1+0x8] >> 16) * edx) >> 15) * w[p1+0xb6];
+	}
+	if (w[p1+0xb8] != 0) {
+		tv.x += ((([p1+0xc] >> 16) * edx) >> 15) * w[p1+0xb8];
+		tv.y += ((([p1+0x10] >> 16) * edx) >> 15) * w[p1+0xb8];
+		tv.z += ((([p1+0x14] >> 16) * edx) >> 15) * w[p1+0xb8];
+	}
+	if (w[p1+0xba] != 0) {
+		tv.x += ((([p1+0x18] >> 16) * edx) >> 15) * w[p1+0xba];
+		tv.y += ((([p1+0x1c] >> 16) * edx) >> 15) * w[p1+0xba];
+		tv.z += ((([p1+0x20] >> 16) * edx) >> 15) * w[p1+0xba];
+	}
+	tv <<= 1;
+
+	if (esi < 0) {
+		ecx = w[p1+0xec] + tv.x;
+		w[p1+0xec] = ecx; [p1+0x8c] += ecx >> 16;
+		ecx = w[p1+0xee] + tv.y;
+		w[p1+0xee] = ecx; [p1+0x90] += ecx >> 16;
+		ecx = w[p1+0xf0] + tv.z;
+		w[p1+0xf0] = ecx; [p1+0x94] += ecx >> 16;
+		return;
+	}
+	tv >>= esi;
+	[p1+0x8c] += tv.x;
+	[p1+0x90] += tv.y;
+	[p1+0x94] += tv.z;
+}
+
+// Another accel -> vel thing, but weird. Gravity!
+// Note - doesn't apply thrust
+
+void F603 (PhysObj *p1, PhysObjList *p2, int tics)
+{
+	if (b[p1+0x56] == 0) return;
+	edi = F1532 (b[p1+0x56], p2);
+	if (w[edi+0xa4] == 0) return;	// terrain?
+
+	tdv = (Vec64)[p1+0x3e];
+	s5 = Vec64Truncate (&tdv, 0xd);
+	tv = tdv; [D8708] = tv.x;
+	[D8709] = tv.y; [D8710] = tv.z;	// planet direction vector
+	s1.w0 = F1466 (&tv);		// magnitude
+	s1.w1 = s5;
+	s1 = F1496 (s1);			// ffp normalise
+	if (s1 == 0) return;
+
+	s4 = F1482 (s1, s1);		// ffp multiply
+	s2.w0 = s1.w0 * s4.w0 >> 15;	// weird...
+	s2.w1 = s4.w1;
+	s2 = F1483 ([edi+0xa4], F1496 (s2));	// divide
+	
+	if (p3 < 0) while (p3 < 0xffff8001) { s2.w1++; p3>>=1; }
+	else while (p3 > 0x7fff) { s2.w1++; p3>>=1; }
+
+	// J2658
+	tv *= -(s2.w0 * p3 >> 15);
+	if (s2.w1 <= 0) {
+		if (s2.w1 <= -0x20) return;
+		if (s2.w1 != 0) tv >>= -s2.w1;
+		eax = w[p1+0xec] + tv.x;
+		w[p1+0xec] = eax; [p1+0x8c] += eax >> 16;
+		ecx = w[p1+0xee] + tv.y;
+		w[p1+0xee] = eax; [p1+0x90] += eax >> 16;
+		ecx = w[p1+0xf0] + tv.z;
+		w[p1+0xf0] = eax; [p1+0x94] += eax >> 16;
+		return;
+	}
+
+	s2.w1 -= 0x10;
+	if (s1.w1 < 0) tv >>= -s2.w1
+	[p1+0x8c] += tv.x;
+	[p1+0x90] += tv.y;
+	[p1+0x94] += tv.z;
+}
+
+// Switch *out* of LFOR
+
+void F604 (PhysObj *p1, PhysObj *p2)
+{
+	b[p1+0x56] = b[p2+0x56];
+	Vec64Add (p1+0x3e, p1+0x3e, p2+0x3e);
+	F595 (p2, &tv);		// Get rel vel, broken
+	[p1+0x8c] += tv.x;
+	[p1+0x90] += tv.y;
+	[p1+0x94] += tv.z;
+	F148 (0xb, 0);		// event 2:11
+}
+
+// Switch *into* LFOR
+
+void F605 (PhysObj *p1, PhysObjList *p2, int objindex)
+{
+	b[p1+0x56] = p3;
+	esi = F1532 (p3, p2);
+	Vec64Sub (p1+0x3e, p1+0x3e, esi+0x3e);
+	F595 (esi, &tv);		// Get rel vel, broken
+	[p1+0x8c] -= tv.x;
+	[p1+0x90] -= tv.y;
+	[p1+0x94] -= tv.z;
+	F148 (0xb, 0);		// event 2:11
+}
+
+// Update FOR
+
+void F606 (PhysObj *p1, PhysObjList *p2)
+{
+	if (b[p1+0x57] != 0) return;	// rotational FOR
+	s1 = b[p1+0x56];
+	if (s1 == 0) { s3 = 0x32; s2 = 0; }	
+	else {
+		ebx = F1532 (s1, p2);
+		F590 (p1, ebx, &tv, &s3);		// get rel pos
+		s3 = ((s3 - w[ebx+0xda]) << 2) + 0x20;
+		s2 = b[ebx+0x56];
+		if (s2 != 0) {
+			esi = F1532 (s2, p2);
+			F590 (p1, esi, &tv, &s5);
+			s5 = (s5 - w[esi+0xda]) + 0x28;
+			if (s5 <= s3) {
+				F604 (p1, ebx);		// Switch FOR out
+				return;
+			}
+		}
+	}
+	// at end, s1 = parent, s2 = parent's parent, s3 = parent weight
+
+	for (esi=0x72, s6=p2+0x72; esi > 0; esi--, s6--)
+	{
+		if (!(b[s6] & 0x10)) continue;	// not orbital  **mangled**
+		ebx = F1532 (esi, p2);
+		if (b[ebx+0x56] == b[p1+0x56]) {		// shared parents
+			F590 (p1, ebx, &tv, &s4);
+			s4 = (s4 - w[ebx+0xda]) << 4;			
+			if (s4 < s3) { s1 = esi; s3 = s4; }
+		}
+		else if (b[ebx+0x56] == s2) {			// child of parent's parent
+			F590 (p1, ebx, &tv, &s4);
+			s4 = ((s4 - w[ebx+0xda]) << 2) + 0x20;
+			if (s4 < s3) {
+				ebx = F1532 (b[p1+0x56], p2);
+				F604 (p1, ebx);		// Switch FOR out
+				return;
+			}
+		}
+	}
+	if (b[p1+0x56] != s1) F605 (p1, p2, s1);	// switch FOR in
+}
+
+// calculated p2 * heading - vel
+// stores global space version in f2, *4 local space version in p3
+
+void F607 (PhysObj *p1, int p2, Vec32 *p3)
+{
+	esi = p2 + p2 / 100;
+	if (esi < 0)
+	{
+		esi = -esi;
+		s3 = -F1516 (esi, [p1+0x18] >> 0x10);
+		s2 = -F1516 (esi, [p1+0x1c] >> 0x10);
+		s1 = -F1516 (esi, [p1+0x20] >> 0x10);	// heading * something
+	}
+	else {
+		s3 = F1516 (esi, [p1+0x18] >> 0x10);
+		s2 = F1516 (esi, [p1+0x1c] >> 0x10);
+		s1 = F1516 (esi, [p1+0x20] >> 0x10);
+	}
+	Vec32Sub (&s3, p1+0x8c);			// minus velocity
+	Vec32Copy (p1+0xf2, &s3);
+	VecMatTMul (p3, &s3, p1);
+	Vec32LShift (p3, 2);
+}
+
+// Worker thing...
+// Converts p1 to p2-relative normalvec/scale pair
+
+void F608 (Vec32 *pos?, Mat32 *orient, Vec32 *outdir, int scale)
+{
+	[p4] = F1475 (p3, p1);		// conv vec to fix15
+	VecMatTMul (p3, p3, p2);
+}
+
+// Rolls to D8708-vec upwards
+
+void F609 (PhysObj *p1)
+{
+	edx = ([p1+0x0] >> 0x10) * [D8708];
+	edx += ([p1+0x4] >> 0x10) * [D8709];
+	edx += ([p1+0x8] >> 0x10) * [D8710];
+	w[p1+0x112] = -(edx >> 0x12);
+}
+
+// Autopilot navigation...
+// Sets direction of thrust, corrects for possible collisions
+// Does time-accel fudge
+
+void F610 (PhysObj *p1, PhysObj *p2, p3, int dist, Vec32 *relvel, PhysObjList *p6)
+{
+// looks fine
+	F594 (p1, p2, p5);		// Get relative velocity
+
+// nasty, depends how used
+	s9 = F612 (p5);			// fast normalise
+
+// possible issue - 102 non-zero?
+	F592 (p1, p2, ebp-0x38, &s1, p6);	// Get relative position + 102
+
+// Fine, assuming that direction is correct.
+	F1518 (ebp-0x44, ebp-0x38);			// vec32 normalise (direction)
+
+// Should be irrelevant
+	if ([p2+0x13c] != 0 || [p2+0x138] >= 0x5f5e100)
+	{
+		s11 = [p2+0x138];
+		s10 = [p2+0x13c];
+		Int64ArithShift (&s11, -s1);
+		[ebp-0x38] -= F1521 ([ebp-0x44]<<0x10, s11);
+		[ebp-0x34] -= F1521 ([ebp-0x40]<<0x10, s11);
+		[ebp-0x30] -= F1521 ([ebp-0x3c]<<0x10, s11);	// orbit mod
+	}
+
+// Thingies
+	w[p1+0x108] = w[ebp-0x38];
+	w[p1+0x10a] = w[ebp-0x34];
+	w[p1+0x10c] = w[ebp-0x30];
+	w[p1+0x10e] = s1.w0;
+	eax = b[D9123] + 1;				// Time accel exponent?
+	if (b[p1+0x150] >= eax)
+	{
+		b[p1+0x150] -= eax;
+		F597 (p1, p2, p3, p4, p5, s9, s1, ebp-0x38, p6);
+		return;
+	}
+	b[p1+0x150] = eax << 4;
+
+	edx = [p1+0x8c]; if (edx < 0) edx = -edx;
+	eax = [p1+0x90]; if (eax < 0) eax = -eax;
+	if (edx <= eax) edx = eax;
+	eax = [p1+0x94]; if (eax < 0) eax = -eax;
+	if (edx <= eax) edx = eax;
+ 	edx >>= 1;
+	eax = [D9123] + 0xb;
+	if (eax < 0xf) eax = 0xf;
+	s3 = edx; s2 = 0;
+	Int64ArithShift (&s3, eax);		// velmag << timeaccel
+
+	esi = F1465 (ebp-0x38);
+	s5 = esi - (esi >> 3);
+	s4 = 0;
+	Int64ArithShift (&s5, s1);		// distmag
+
+	// Check for possible collision
+	if (s2 > s4 || (s2 == s4 && s3 > s5)) { s3 = s5; s2 = s4; }
+	if (s2 != 0) eax = 0x5800; else eax = 0x1800;
+	[ebp-0x50] = [ebp-0x4c] = [ebp-0x48] = 0;
+	F802 (p1, p6, ebp-0x50, ebp-0x44, b[p1+0x86], s3, s2, eax);
+	if (!(b[D8711] & 0x80))
+	{
+		[ebp-0x38] = w[p1+0x108];
+		[ebp-0x34] = w[p1+0x10a];
+		[ebp-0x30] = w[p1+0x10c];
+		s1 = w[p1+0x10e];
+		F597 (p1, p2, p3, p4, p5, s9, s1, ebp-0x38, p6);
+		return;
+	}
+	[ebp-0x38] = w[p1+0x108];
+	[ebp-0x34] = w[p1+0x10a];
+	[ebp-0x30] = w[p1+0x10c];
+	s6.w0 = F1465 (ebp-0x38);		// vecmag
+	s6.w1 = w[p1+0x10e] + 0xf;		// Wrong?
+	F1495 (&s8, s6);				// ffp -> int64
+	Int64Sub64 (&s8, [D8712], [D8713], s8, s7);
+	if (s7 >= 0)		// collision is after landing
+	{
+		[ebp-0x38] = w[p1+0x108];
+		[ebp-0x34] = w[p1+0x10a];
+		[ebp-0x30] = w[p1+0x10c];
+		s1 = w[p1+0x10e];
+	}
+	else {			// avoidance, but unknown how.
+		eax = ([D8721] >> 0x11) + ([ebp-0x44] >> 2);
+		[ebp-0x38] = w[p1+0x108] = eax;
+		eax = ([D8722] >> 0x11) + ([ebp-0x40] >> 2);
+		[ebp-0x34] = w[p1+0x10a] = eax;
+		eax = ([D8723] >> 0x11) + ([ebp-0x3c] >> 2);
+		[ebp-0x30] = w[p1+0x10c] = eax;
+		s1 = w[p1+0x10e];
+		b[p1+0x150] = 0;
+	}
+	F597 (p1, p2, p3, p4, p5, s9, s1, ebp-0x38, p6);
+}
+
+// Orientation update worker function
+// Rotates axis pair - horrible fudge
+
+void F611 (PhysObj *p1, Vec32 *p2, Vec32 *p3, int p4, int p5)
+{
+	s3 = [D6159]; s2 = [D6160]; s1 = [D6161];
+	if (p5 <= 5)
+	{
+		esi = p5*2 + 1;
+		[p2+0x0] -= [p2+0x0] >> esi;
+		[p2+0x4] -= [p2+0x4] >> esi;
+		[p2+0x8] -= [p2+0x8] >> esi;
+		[p3+0x0] -= [p3+0x0] >> esi;
+		[p3+0x4] -= [p3+0x4] >> esi;
+		[p3+0x8] -= [p3+0x8] >> esi;
+	}
+	if (p4 == 0x70)
+	{
+		s6 = [p3+0x0] + ([p2+0x0] >> p5);
+		s5 = [p3+0x4] + ([p2+0x4] >> p5);
+		s4 = [p3+0x8] + ([p2+0x8] >> p5);
+	}
+	else {
+		s6 = [p3+0x0] - ([p2+0x0] >> p5);
+		s5 = [p3+0x4] - ([p2+0x4] >> p5);
+		s4 = [p3+0x8] - ([p2+0x8] >> p5);
+	}
+	s9 = [p3+0x0] >> p5;
+	s8 = [p3+0x4] >> p5;
+	s7 = [p3+0x8] >> p5;
+	Vec32Copy (p3, &s6);
+	if (p4 == 0x70) Vec32Sub (p2, &s9);
+	else Vec32Add (p2, &s9);
+	b[p1+0x24] -= b[ebp-0xe + p5];
+	if (b[p1+0x24] < 0)
+	{
+		F1520 (p1);				// Orthogonalise
+		b[p1+0x24] = 0x3c;
+	}
+}
+
+// pseudonormalise
+
+int F612 (Vec32 *p5)
+{
+	eax = abs(p5->x) | abs(p5->y) | abs (p5->z);
+	eax = FindMSB (eax) - 14;
+	if (eax < 0) Vec32LShift (p5, -eax);
+	else Vec32RShift (p5, eax);
+	return eax;
+}
+
+
+// F613-F615 cargo, F616+ starport funcs
+
+
+

@@ -1,0 +1,686 @@
+// Event 6 function
+
+void F1007 (E6Struct *p1)
+{
+	esi = [p1+0x4];
+
+	if (esi & 0xffff > [D8886]) [D8886] = 0;
+	else [D8886] -= esi & 0xffff;				// time to target
+
+	if ([D8921] != 0) {
+		if (b[[D8861]+0xcb] & 0x40) [D8921] -= esi << 9;	// cool booster
+		else [D8921] -= esi << 7;
+		if ([D8921] < 0) [D8921] = 0;					// cabin temp
+	}
+	F934 ([D8861], esi);								// drive/equip fail
+	if (b[D8870] != 2) { F938 ([D8861], esi); return; }	// cooling etc.
+
+	esi = F1532 (b[D8861]+0xfe], [D9133]);
+	F144 (0xb, 0x6, p1);						// process autopilot stuff
+	if ([[D8861]+0x138]*3 > [D8867])
+		F589 ([D8861], [D8862], -1);			// equalise orientation - bug?
+	if (b[[D8861]+0xff] == 0x20)				// landed case
+	{
+		[D8862] = esi;
+		b[D8859] = b[esi+0x86];					// starport index
+		b[D8874] = 0;							// navigation index
+		if (!(b[esi+0x14c] & 0x40)) {			// not open air
+			b[D8871] &= 0xfb;					// labels off?
+			if (!(b[esi+0x14c] & 0x20) {
+				b[D8870] = 0xa;					// docking at station
+				F1116 ();
+			}
+			else {
+				b[D8870] = 0x8;					// docking at closed starport
+				[D8867] = 0;					// Altitude
+				F1116 ();
+			}
+		}
+		else {
+			b[D8870] = 0x2e;					// landed starport
+			F995 ();							// Set orient, altitude
+			F1116 ();							// console process
+		}
+		F48 (1, 0, 0xd);
+		F48 (1, 0, 0xe);
+	}
+	if (b[esi+0x14c] & 0x10) return;
+	if (b[[D8861]+0xfe] != b[[D8861]+0x56]) return;		// target planet/parent
+	if (b[[D8861]+0x10e] >= 0x17]) return;				// distance
+	b[D8870] = 0;					// free flight
+	F1097 (0x8637, -1);				//  "Arrived in vicinity..."
+	[D8918] = 0;					// set speed
+	F1116 ();
+	F48 (1, 0, 0xe);
+}
+
+// Event 5 function
+
+F1009 (E5Struct *p1)
+{
+	ebx = [p1+0x8];
+	ecx = [p1+0x0] - [ebx+0xa8];
+	esi = [p1+0x4] - [ebx+0xac];			// calc elapsed time
+	if ([p1+0x0] < [ebx+0xa8]) esi -= 1;
+	[ebx+0xa8] = [p1+0x0];
+	[ebx+0xac] = [p1+0x4];
+	[D8868] = ecx; [D8869] = esi;
+	b[ebx+0x8a] = b[ebx+0x8b] = 0;			// force each-frame update
+	F1008 (ebx);							// animation process
+	eax = [D7255 + 8*(b[D8870]>>1)];		// call state function
+	call [eax] (ebx);
+}
+
+// Atmosphere process function
+
+void F1014 (PhysObj *p1)
+{
+	if ([D8867] > 0x1312d00) return;		// altitude check
+	if (b[p1+0xcb] & 0x40) eax = 0xb;		// atmos shield
+	else eax = 5;
+	eax -= !(b[D8871] & 2);					// undercarriage
+	edx = [D8921] + [D8866] >> eax;			// new cabin temp - speed rel.
+	if (edx > 0xffff) F953 (p1, -1, 0);
+	else {
+		[D8921] += [D8866] >> eax;			// increment temp
+		edx = ([D8866] >> eax) >> 8;
+		if (edx > 0) F953 (p1, edx, 0);		// damage
+	}
+	if (b[D8804+0x3f62] != 0 && b[D8804+0x3f5c] != 0) {
+		eax = F1532 (b[p1+0x56], [D9133]);
+		if (w[eax+0xe0] < 0x116) {
+			[D8835] |= 0x40;
+			SoundPlaySample (0xe);			// wind
+		}
+	}
+	if ([D8866] < 0xbb8) { F1017 (p1); return; }		// low speed
+	if ([D9155] > 0xffff) esi = 0xffff << 0xb;
+	else esi = [D9155] << 0xb;
+	[p1+0x8c] -= F1521 ([p1+0x8c], esi);
+	[p1+0x90] -= F1521 ([p1+0x90], esi);
+	[p1+0x94] -= F1521 ([p1+0x94], esi);		// atmos drag
+	F1016 (p1);
+}
+
+void F1015 (PhysObj *p1)
+{
+	b[D8835] &= 0xbf;		// clear wind flag
+	F1016 (p1);
+}
+
+void F1016 (PhysObj *p1)
+{
+	if ([D8867] <= 0x1312d00) F1017 (p1);
+}
+
+void F1017 (PhysObj *p1)
+{
+	// Null function
+}
+
+
+// Switch to manual
+
+void F1018 ()
+{
+	[D8918] = [D8866];			// setspeed->current
+	b[D8870] = 0;				// free flight
+	F1116 ();					// console -> nav mode
+	SoundPlaySample (0x14);
+	F48 (1, 0, 0xe);
+}
+
+// Event 5, state 0x2 - autopilot
+// Most of the process is actually in E6 base function
+
+void F1019 (PhysObj *p1)
+{
+	// Combat manual-switch
+	if (b[D9046] & 2 && [D9138] != 0) { F1018 (); return; }
+	F1039 (p1);							// Turret input process
+
+	// Collision, some ex-atmos
+	eax = F1033 (p1, [D9133], &s2, &s1.b3, &s1.b2);
+	if (b[D8870] == 0x2c) return;		// Dead 
+
+	if (!(eax & 0x20))					// not in effect region
+	{
+		if (eax & 0x1) F1014 (p1);		// atmos process
+		else F1035 (p1);				// else asteroids, space dust
+	}
+	else if (eax & 0x40)				// landed
+	{
+		if (eax & 0x80) return;			// crashed
+		[D8862] = s2;
+		b[D8880] = 0;
+		b[D8859] = b[s2+0x86];
+		F1042 (p1);						// zero speed/thrust/roll
+		F652 (b[D8857], s2);			// docking-related
+		if (b[s2+0x14c] & 0x40) {		// open air
+			b[D8870] = 0x2e;			// landed mode
+			F995 ();					// fix altitude 
+			F1116 ();
+		}
+		else {
+			[D8884] = 0x70000;			// docking timeout
+			SoundPlaySample (0x13);
+			b[D8871] &= 0xdb;			// text labels, engine noise?
+			if (b[s2+0x14c] & 0x20) {	// starport
+				b[D8870] = 8;			// Starport docking mode
+				[D8804+0xdc] = 0;		// zero altitude
+				F1116 ();
+			}
+			else {
+				b[D8870] = 0xa;			// Station docking mode
+				F1116 ();
+			} 
+		}
+		F48 (1, 0, 0xd);
+		F48 (1, 0, 0xe);
+		return;
+	}
+	else if (eax & 1) F1014 (p1);		// atmos process
+	else F1035 (p1);					// asteroids, dust
+
+	F1046 (p1);							// smoke, pos, engine noise
+	F603 (p1, [D9133], [D8868]);		// gravity
+	F601 (p1, [D8868]);					// velocity
+	F585 (p1, [D8868], 1, [D8868]);		// orientation
+}
+
+// Switch to autopilot
+
+void F1020 ()
+{
+	if (b[D8870] >= 0x28) return;		// not moving
+	b[D8871] &= 0xfe;					// clear engines-off
+	b[[D8861]+0x100] = b[D8874];		// set navigation target
+	if (b[D8874] == 0) return;			// no target set
+	if (!(b[[D8861]+0xca] & 0x20)) return;	// no autopilot
+	if (b[D8870] == 0x26) F1032 ([D8861]);	// clears traffic ctrl. request?
+	b[[D8861]+0xff] = 8;					// basic navigation mode
+	b[D8870] = 2;					// autopilot state
+	F48 (0x17, 0, b[[D8861]+0x86]);
+	F1116 ();
+	SoundPlaySample (0x14);
+	F48 (1, 0, 0xe);
+}
+
+// Event 5, state 0x0 - free flight
+
+void F1021 (PhysObj *p1)
+{
+	F1037 (p1);						// Set-speed & heading update func
+	F1041 (p1);						// Orient, gravity, auto-roll, FOR, thrust
+	if (b[D8871] & 1) F602 (p1, [D8868]);
+	else F601 (p1, [D8868]);		// Velocity updates - manual f2-capped
+	if (b[D9046] & 2)				// combat mode
+	{
+		if ([D9138] != 0) {
+			if (b[D8870] == 2) F1018 ();		// Disable autopilot
+			F1120 ();							// Switch console to combat mode
+			b[D9135] = [D8871] & 1;
+			[D9138] = 0;
+		}
+		F726 ([D8861]+0x8c, D8839, [D8868], 0xd);
+		b[D8871] |= 1;							// Set engines off
+		F726 (D8839, [D8861]+0x8c, [D8868], 0xb);
+	}
+	else if ([D9138] == 0) {		// switch out from combat mode
+		b[D8871] &= 0xfe;
+		b[D8871] |= b[D9135];		// return to previous mode
+		F1117 ();					
+		F1119 ();					// console abuse
+		[D9138] = 1;				// non-combat
+	}
+	F1046 (p1);						// smoke, position, engine noise
+
+	// collision and out-of-atmos process
+	eax = F1033 (p1, [D9133], &s1, &s2.b3, &s2.b2);
+	if (b[D8870] == 0x2c]) return;		// death mode
+	if (eax & 0x20)					// Within starport region
+	{
+		if (eax & 0x40) {			// landed
+			b[D8870] = 0x24;		// takeoff mode? or landing...
+			F1116 ();
+			F48 (1, 0, 0xe);
+		}
+		if (!(b[s1+0x14c] & 0x10)) return;	// starport...
+		eax = F657 ([D8857], s1);
+		if (eax != 0) {				// player currently docking
+			b[D8870] = 6;			// transitional state...
+			F48 (1, 0, 0xe);
+			return;
+		}
+		F1022 (s1);		// vacate area immediately
+		return;
+	}
+	if (eax & 0x40) {				// landed
+		[D8862] = s1;
+		b[D8859] = b[s1+0x86];
+		F1042 (p1);					// zero speed, thrust...
+		b[D8880] = 0xff;
+		b[D8870] = 0x32;			// landed rough transition?
+		F48 (1, 0, 0xd);
+		F48 (1, 0, 0xe);
+		return;
+	}
+	b[D8873] = 0;					// time to traffic control warning
+	if (eax & 1) {					// Errr.... within atmosphere
+		F1014 (p1);								// atmos process func
+		[D8839] = [D8840] = [D8841] = 0;		// Zero velocity fudge
+		[D8842] = [D8866];						// Set ? to player speed
+	}
+	F1035 (p1);						// dust & asteroids
+}
+
+// Vacate the area immediately warning
+
+void F1022 (PhysObj *starport)
+{
+	if (b[D8873] != 0) return;
+	b[D8873] = 6; 					// delay between warnings
+	[D8862] = p1;
+	b[D8859] = b[p1+0x86];
+	[sb] = 0x98be;
+	[sb+0x18] = 8;
+	[sb+0x1c] = s1;
+	[sb+0x4] = b[p1+0x86];
+	[sb+0x28] = [p1+0xa0];
+	F349 (sb);
+	F48, 1, 0, 0xd);
+}
+
+void F570 (PhysObj *p1, PhysObjList *p2, int flags, int parentindex, 
+	PhysObj **parptr, uint distance, int padindex)
+flags == rval
+	0x1: Collision object with different radii
+	0x2: Distance valid?
+	0x40: Landing
+	0x80: Crash
+
+
+int F1033 (PhysObj *p1, PhysObjList *p2, PhysObj **parptr,
+	byte *parindex, byte *padindex)
+{
+	F569 (p1, p2, &s2, p4, p3, &s1, p5);	// collision function
+	b[D8934] = s2;							// copy flags
+	if (s1 == -1) [D8867] = 0x7fffffff;
+	else [D8867] = s1;						// set altitude
+	if (s1 >= 0xb71b00) {
+		if (b[D8870] != 0x2c) {
+			if (b[D8860] & 0x40 && b[D8630] < 0) F1116 ();
+			w[D8860] |= 0x40;		// hyperspace allowed, not docked
+		}
+	}
+	else {
+		if (b[D8860] & 0x40 && b[D8630] < 0) F1116 ();
+		w[D8860] &= 0xffbf;
+	}
+	if (!(b[D8934] & 1)) {		// outside atmosphere
+		F1034 (p1);				// kill cargo
+		return b[D8934];
+	}
+	if ([[p3]+0x82] >= 0x86 && [[p3]+0x82] <= 0x94)		// gas giant, star
+	{
+		if (b[p1+0xca] & 0x10)				// fuel scoop
+		{
+			// check alt, speed, time...
+			if (s1 > 0x1c9c380 || [D8866] < 0x23d8
+				|| [D8804+0x1e8] > [D9155]) return b[D8934];
+			if ([D8891] < [D8889])			// used space < total
+			{
+				[D8891]++; w[D8901]++;		// fill with fuel
+				[sb+0x0] = 0x9906;
+				[sb+0x4] = w[D8901];
+				[sb+0x18] = -1;
+				F349 (sb);					// print scooping message
+				F148 (0x16, 0x8e13);		// notify cargo module?
+				SoundPlaySample (0x11);
+			}
+		}
+		[D8804+0x1e8] = 0x2468a;			// scoop delay
+		if ([[p3]+0x82] >= 0x89)			// sun, not gas giant
+		{
+			eax = [D8921];					// cabin temp mod
+			if ([[p3]+0x82] >= 0x8c) [D8921] += [D9155]>>8;
+			else [D8921] += [D9155]>>10;
+			if (eax > [D8921]) F953 (p1, -1, 0);	// destroy
+		}
+	}
+	return b[D8934];
+}
+
+// Check cargo life support
+
+void F1034 (PhysObj *p1)
+{
+	if (b[p1+0xca] & 2) return;
+	if (w[D8900] != 0) { w[D8900]--; w[D8898]++; }
+	if (w[D8899] != 0) { w[D8899]--; w[D8897]++; }
+}
+
+// Space dust generation function
+
+F1035 ()
+{
+
+}
+
+// Asteroid generation function
+
+F1036 ()
+{
+
+}
+
+
+// Manual control specific input function
+
+void F1037 (PhysObj *p1)
+{
+	if (b[D8630] >= 0) return;
+	if (!([D8804+0xe9] & 1))		// not engines-off? 
+	{
+		if (b[D7692] == 0) {		// return pressed
+			if ([D8918] < 0) {
+				[D8918] = 0;
+				F1038 (p1);
+				return;
+			}
+			else {
+				[D8918] += F1121 ([D8918]);
+				if ([D8918] < 0) [D8918] = 0x7fffffff;	// wraparound prevention
+			}
+		}
+		if (b[D7694] == 0) {		// shift pressed
+			if ([D8918] <= 0) {
+				if (!([D8804+0xe9] & 0x80)) {
+					[D8918] -= [D9122] >> 8;			// note constant rate
+					if ([D8918] > 0) [D8918] = 0x80000000;
+				}
+			}
+			else {
+				edi = [D8918];
+				b[D8804+0xe9] |= 0x80;
+				[D8918] -= F1121 ([D8918]);
+				if (edi >= [D8918] || [D8918] < 0) [D8918] = 0;
+			}
+
+		}
+		else b[D8804+0xe9] &= 0x7f;
+	}
+	F1038 (p1);
+}
+
+// Heading input update function
+
+void F1038 (PhysObj *p1)
+{
+	s1 = [D8804+0xd0];
+	[D8804+0xd0] = GuiGetXYAccum ();
+	s2.w0 = (w[D8804+0xd0] - s1.w0) << 6;
+	s2.w1 = (w[D8804+0xd2] - s1.w2) << 6;
+	if (b[D8804+0xea] != 2 && b[D8804+0xea] != 3)
+	{
+		if (b[D8804+0x3f54] == 0) s2.w0 = -s2.w0;
+		if (b[D8804+0x3f55] == 0) s2.w1 = -s2.w1;
+		w[p1+0xb0] += s2.w1;
+		if (b[D8804+0x3f56] == 0) { w[p1+0xb4] -= s2.w0; return; }
+		if (b[D8804+0x212] & 0x20) return;
+		w[p1+0xb2] += s2.w0;
+		if ([D8804+0xdc] <= 0x2625a00) { w[p1+0xb4] -= s2.w1; return; }
+	}
+	w[D8804+0x204] += s2.w0;
+	w[D8804+0x206] -= s2.w1;
+	if (w[D8804+0x206] < 0) {
+		b[D8804+0xea] = 2;
+		if (w[D8804+0x206] <= 0xc000) w[D8804+0x206] = 0xc001;
+		return;
+	}
+	if (b[p1+0xd1] >= 4) {
+		b[D8804+0xea] = 3;
+		if (w[D8804+0x206] >= 0x4000) w[D8804+0x206] = 0x3fff;
+		return;
+	}
+	w[D8804+0x206] = 0xffff;
+}
+
+// Turret input only function
+
+F1039 (PhysObj *p1)
+{
+	// Run orientation input if in turret mode
+	if (b[D8872] == 2 || b[D8873] == 3) F1038 (p1);
+}
+
+// General non-interactive update function (manual only?)
+// Updates orientation, velocity, auto-roll, FOR, thrust
+
+void F1041 (PhysObj *p1)
+{
+	F585 (p1, [D9155]>>1, 0, [D9155]>>1);
+	F585 (p1, [D9155]>>1, 0, [D9155]>>1);		// Update orientation
+	F603 (p1, [D9133], [D9155]);				// Update gravity-vel
+	if ([D8867] <= 0x2625a00) {					// close to planet
+		F609 (p1);								// Set autopilot roll to D8708
+		w[p1+0xb2] = w[p1+0x112];				// Set real roll to auto
+	}
+	b[p1+0x14d]--;
+	if (b[p1+0x14d] < 0) {
+		F606 (p1, [D9133]);						// Update FOR
+		b[p1+0x14d] = 0xd;
+	}
+	if (b[D8870] == 0x24) {						// takeoff?
+		s1 = s3 = 0; s2 = 0xcc6;
+		F599 (p1, &s3, &s6);					// thrust upwards
+	}
+	else if (b[D8871] & 1) F1043 (p1);			// engines off mode
+	else {
+		F607 (p1, [D8918], &s3);				// Calculate setspeed thrust
+		F599 (p1, &s3, &s6);					// Thrust in direction
+	}
+}
+
+// Speed/thrust etc zeroed for landing
+
+F1042 (PhysObj *p1)
+{
+	[p1+0x8c] = [p1+0x90] = [p1+0x94] = 0;		// speed zero
+	w[p1+0xb0] = w[p1+0xb2] = 0;				// roll rates zero
+	[D8918] = 0;								// set speed zero
+	w[p1+0xb6] = w[p1+0xb8] = w[p1+0xba] = 0;	// thrust zero;
+	if (b[D8860] & 0x80) SoundModifyEngineNoise (3, 1, 0x12c, p1);
+}
+
+// Engines off thrust calculator
+// Has weird bit related to D8839, D9046 and side/top thrusters
+
+void F1043 (PhysObj *p1)
+{
+	s3 = s2 = s1 = 0;
+	if (b[D9046] & 2)					// complete fucking mystery...
+	{
+		s9 = [p1+0x8c] - [D8839];
+		s8 = [p1+0x90] - [D8840];
+		s7 = [p1+0x94] - [D8841];
+		esi = F1521 ([p1+0xc], s9) + F1521 ([p1+0x10], s9) 
+			+ F1521 ([p1+0x14], s9);
+		edi = F1521 ([p1+0x0], s9) + F1521 ([p1+0x4], s9) 
+			+ F1521 ([p1+0x8], s9);
+		if (edi > 0x100) s3 = -edi << 2;
+		if (edi < 0xffffff00) s3 = -edi << 2;
+		if (esi > 0x100) s2 = -esi << 2;
+		if (esi < 0xffffff00) s2 = -esi << 2;
+	}
+	if (b[D7692] == 0) s1 = 0x7fff;				// shift, return
+	else if (b[D7694] == 0) s1 = 0xffff8001;
+	else SoundModifyEngineNoise (3, 1, 0x12c, p1);
+	F599 (p1, &s3, &s6);						// Update thrust
+}
+
+// Update position
+
+void F1045 (PhysObj *p1)
+{
+	F1512 (p1, [D8869], [D8868]);
+}
+
+// Update smoke, position, engine noise
+
+void F1046 (PhysObj *p1)
+{
+	if (b[p1+0x14e] != 0) F939 (p1, p1+0x3e);
+	F1045 (p1);
+	if (b[D9030] == 0 || b[D9116] == 0) return;		// song playing
+													// or engine-sound off
+	edx = abs(w[p1+0xb6]);
+	eax = abs(w[p1+0xb8]);
+	ecx = abs(w[p1+0xba]);
+	if (edx > eax) eax = edx;
+	if (ecx > eax) eax = ecx;
+	if ((eax -= 0x221) < 0) return;
+	SoundModifyEngineNoise (3, eax, 0x1ae-eax, p1);
+	w[D8860] |= 0x80;
+}
+
+
+
+// Global input-update function
+
+void F1056 (p1)
+{
+	if (b[D8630] < 0 && b[D8804+0xea] == 4 && b[D7691+0x38] != 0)
+	{
+		// external control - rotate, zoom
+	}
+
+	if (b[D8870] != 0x2a) F1040 (p1);
+	ebx = GuiGetLastAction ();
+	if (ebx == 0) return;
+
+	// Stuff that happens even when player module doesn't
+	// have render control
+	switch (ebx)
+	{
+		case 'm':			// Launch missile
+		for (edx=[D8861]+0xd6, eax=0; eax<10; eax++, edx++) {
+			if (b[edx] == 0) continue;
+			ebx = eax + 16; break;
+		}
+		if (ebx == 'm') break;
+		if (ebx-15 != b[D8804+0xc4]) b[D8804+0xc4] = ebx-15;
+		F1096 ();
+		SoundPlaySample (0x14); return;
+
+		case 'e':			// ECM
+		F935 (p1);
+		SoundPlaySample (0x14); return;
+
+		case 'x':			// Escape capsule
+		F1098 ([D8861]);
+		SoundPlaySample (0x14); return;
+
+		case 'b':			// Energy bomb
+		F937 (p1);
+		F1119 ();
+		SoundPlaySample (0x14); return;
+
+		case '/':			// Radar mapper
+		b[D8871] ^= 0x40;
+		SoundPlaySample (0x14); return;
+
+		case 'd':			// Camera, mining machine
+		F1122 (p1);
+		SoundPlaySample (0x14); return;
+
+		case 'c':			// Chaff
+		if (b[D8630] >= 0) break;
+		if (!(b[p1+0xc9] & 8)) break;
+		if (w[D8804+0x174] == 0) break;
+		eax = F291 ([D8861], 0x20);
+		if (eax != 0) {
+			[eax+0x82] = 0xa4;
+			[D7253] = b[eax+0x86];
+			b[[D7758]+[D7253]] = 0x2b;
+			F990 ([D9133], F1057);
+		}
+		SoundPlaySample (0x14); return;
+	}
+
+	if (b[D8630] >= 0) {
+		GuiSetLastAction (ebx);
+		return;
+	}
+
+	// Navigation computer
+	if (b[[D8861]+0xc8] & 0x20 && ebx >= 0xd1 && ebx <= 0xe2)
+	{
+		edi = ebx - 0xd0;
+		for (ebx=0x72, edx=[D9133]+0x9844, eax=[D9133]+0x72;
+			ebx <= 0 && edi != 0; ebx--, eax--, edx-=0x152)
+		{
+			if (b[eax] == 0) continue;
+			if (!(b[eax] & 0x10)) continue;
+			if (--edi == 0) break;
+		}
+		b[D8804+0xec] = [[D9133] + 0x152*ebx + 0x74 + 0x86];
+		[D7246] = 0;
+		if (b[D8870] != 2 && b[D8870] < 0x28) F1020 ();		// goto auto	
+		if (b[D8870] == 2 && b[D8870] < 0x28) {
+			b[D8870] = 0;
+			F1020 ();
+		}	
+		ConsoleSetButtonImage (0x11, 0);
+		for (ebx=0xd1; ebx < 0xe3; ebx++) GuiRemoveHotArea (ebx);
+		b[D7251] = b[D7250] = 0;
+		return;
+	}
+
+	switch (ebx)
+	{
+		case 'l':			// text labels
+		b[D8871] ^= 0x4;
+		if (b[D8871] & 4) ConsoleSetButtonImage (0x10, 1);
+		else ConsoleSetButtonImage (0x10, 0);
+		SoundPlaySample (0x14); return;
+
+		case 0xf6:			// Front view
+		ConsoleSetButtonImage (0x18, 1);
+		b[D8804+0xea] = 0; return; 
+
+		case 0xf7:			// Rear view
+		ConsoleSetButtonImage (0x17, 1);
+		b[D8804+0xea] = 1; return;
+
+		case 0xf8:			// Turret view
+		if (b[[D8861]+0xd1] <= 2) return;
+		b[D8804+0xea] = 2;
+		if (b[D8804+0x206] >= 0) b[D8804+0xea] = 3;
+		ConsoleSetButtonImage (0x16, 1);
+		return; 
+
+		case 0xf9:			// External view
+		ConsoleSetButtonImage (0x15, 1);
+		b[D8804+0xea] = 4; return;
+
+		case 0xfa:			// Missile view
+		if (b[D8804+0xef] == 0) return;
+		if (!(b[[D8861]+0xc9] & 2)) return;
+		ConsoleSetButtonImage (0x14, 1);
+		b[D8804+0xea] = 5; return;
+
+		case 0xfb:			// Combat computer
+		if (!(b[[D8861]+0xc8] & 0x40)) return;
+		b[D8804+0xea] = 6;
+		[D7270] = [D7269] = 0x320;
+		[D7271] = 0;
+		ConsoleSetButtonImage (0x13, 1); return;
+
+		case 0xfc:			// Esc. Capsule, again.
+		F1098 ([D8861]);
+		SoundPlaySample (0x14); return;	
+
+		// And more...
+	}
+}

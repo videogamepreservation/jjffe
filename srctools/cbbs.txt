@@ -1,0 +1,1111 @@
+Start at F320, finish at... F360?
+
+// ivar, tvar correspond to entries in StrVars struct
+
+// F290 ([p1+0x10], [p1+0x4], [p1+0xc], [p1+0x8], [p1+0x24]);
+
+struct ServEntry
+{
+	0x0: ffcode name;		// base identifier...
+	0x4: int ivar1;
+	0x8: int ivar2;
+	0xc: int ivar3;
+	0x10: int flags;
+	0x14: int bbsindex;			// index of original station bbs thing
+	0x18: set to action used to switch (F361)
+	0x1c:
+	0x20: set to original entry pointer (F361)
+	0x24: ffcode tvar1;
+	0x28:
+	0x2c: ffcode tvar2;
+};
+
+flags & 7 = num. extra passengers
+flags & 0x2000 = passenger mission
+
+
+struct ServScreen
+{
+	int hdrcode;		// DATA_005304:	; ffcode for 'header'
+	int hdrxpos;		// DATA_005305:	; xpos of 'header'
+	int hdrheight;		// DATA_005306:	; height of 'header'
+	int unknownxpos;	// DATA_005307:	; xpos for extra thing
+	int entryheight;	// DATA_005308:	; (minimum) entry height
+	int entryxpos1;		// DATA_005309:	; first button row xpos for entries
+	int entryxpos2;		// DATA_005310:	; second button row xpos for entries
+	int entryxpos3;		// DATA_005311:	; text xpos for entries
+	int backflag;		// DATA_005312:	; "previous" screen
+	int entrytype;		// DATA_005313:	; entry type
+};
+
+
+
+//	F290 ([p1+0x10], [p1+0x4], [p1+0xc], [p1+0x8], [p1+0x24]);
+
+void F290 (p1, p2, p3, p4, int bounty?)
+{
+	[D9079+0x4+[D9073]*20] = p1;
+	[D9079+0x0+[D9073]*20] = p2;
+	[D9079+0x8+[D9073]*20] = p3;
+	[D9079+0xc+[D9073]*20] = p4;
+	[D9079+0x10+[D9073]*20] = p5;
+	[D9073]++;
+	
+	ebx = (p1 >> 9) & 0xf;
+	if ([ebx*6+D5123] == 0) return;
+	eax = F1530 ();
+	if (eax > [ebx*6+D5123]) return;
+	switch (b[ebx*6+D5124])
+	{
+		case 0: F665 ([D8857], p5); break;
+		case 3: F668 ([D8857], p5);
+				F668 ([D8857], p5); break;
+		case 1: F666 ([D8857], p5);
+				F666 ([D8857], p5);
+				F666 ([D8857], p5); break;
+		case 2: F667 ([D8857], p5); break;
+	}
+}
+
+// Event 0 function
+
+void F320 (p1)
+{
+	if (p1 & 0xff < 2) {
+		[D9051] = 0;
+		b[D8640] = b[D8641] = 0;
+		[D9067] = 0;
+		[D5315] = 1;
+	}
+	else if (p1 & 0xff == 2) {
+		F322 (0, 0);
+		F44 (1, 0, 2);
+	}
+}
+
+// Event 2 function
+
+void F321 (p1)
+{
+	if ([p1] == 5) F323 ();			// Docking event
+	else if ([p1] == 0xf) F324 ();	// Day event
+	else if ([p1] == 0x19) F325 ();
+}
+
+void F322 (p1, p2)
+{
+	if (b[D8640] != 0) F326 ();
+}
+
+// Landing event function - deducts fees
+
+void F323 ()
+{
+	[D9067] = 0;
+	F359 ();		// clear "stuff"
+	if (w[D8996] == 4) return;
+	if ([[D8862]+0x82] == 0x45) return;		// Thargoid?
+
+	eax = w[D8995];
+	if (eax < 0xb3) ebx = 0xa;
+	else if (eax < 0xcc) ebx = 0x14;
+	else if (eax < 0xee) ebx = 0x1e;
+	else ebx = 0x28;
+
+	// J1904
+	if (ebx > [D8888])
+	{
+		[D9095+4*w[D8996]] += ebx;
+		if (ebx > [D9095+w[D8996]]) [D9095+4*w[D8996]] -= ebx;
+		F48 (0xa, 0x0, w[D8996]);
+		[ebp-0x30] = 0x9955;		// pay fee or else
+	}	
+	else {
+		[D8888] -= ebx;
+		[ebp-0x30] = 0x9954;		// landing fee deducted
+	}
+	[ebp-0x24] = ebx;
+	[ebp-0x18] = 8;
+	[ebp-0x14] = [D8862];
+	F349 (ebp-0x30);
+}
+
+// Day event function, deducts fees
+
+void F324 ()
+{
+	if ([D8870] != 0x2a && [D8870] != 0x30) return;
+	[D9067] = 0;
+
+	eax = w[D8995];
+	if (eax < 0xb3) ebx = 0x5;
+	else if (eax < 0xcc) ebx = 0xa;
+	else if (eax < 0xee) ebx = 0x14;
+	else ebx = 0x1e;
+
+	if (ebx > [D8888])
+	{
+		[D9095+4*w[D8996]] += ebx;
+		if (ebx > [D9095+w[D8996]]) [D9095+4*w[D8996]] -= ebx;
+		F48 (0xa, 0x0, w[D8996]);
+		[ebp-0x30] = 0x9955;		// pay fee or else
+	}	
+	else {
+		[D8888] -= ebx;
+		[ebp-0x30] = 0x9957;		// today's charge deducted
+	}
+	if (b[D8640] != 0) F326 ();
+	[ebp-0x24] = ebx;
+	[ebp-0x18] = 8;
+	[ebp-0x14] = [D8862];
+	F349 (ebp-0x30);
+}
+
+void F325 ()
+{
+	if (b[D8640] != 0) F326 ();
+}
+
+void F326 ()
+{
+	switch ([D9054])
+	{
+		case 0x3: F538 (ebp-0x30); break;
+		case 0x5: F437 (ebp-0x30); break;
+		case 0x2: F453 (ebp-0x30); break;
+		case 0x7: F493 (ebp-0x30); break;
+		case 0x4: F385 (); break;
+		case 0x8: F445 (); break;
+		case 0x1: F523 (); break;
+		case 0xb: F541 (0xb); break;
+		default: F335 (); break;
+	}
+}
+
+// Switch to a particular BBS screen
+// Or just render?
+
+void F327 (int p1)
+{
+	F358 ();		// Clear BBS hot areas
+	[D9054] = p1;	// Set new val
+	if ([D9052] != 0)		// Station name string?
+	{
+		s2 = [D9056];
+		s1 = [D8862] + 0x124;
+		StringDrawWrapShadow ([D9052], ebp-0x14, b[D5286], 4, 6, 0x79);
+	}
+	if ([D8688] != 0)		// dunno... extra string at the top?
+	{
+		[ebp-0x28] = [D8689];
+		[ebp-0x24] = [D8690];
+		[ebp-0x20] = [D8691];
+		esi = [p1*40+D5307];		// xpos...
+		eax = 0x140 - 3 - esi;
+		eax = StringDrawWrapShadow ([D8688], ebp-0x28, b[D5286], esi, 1, eax);
+		ebx = 10 * eax;
+	}
+	else ebx = 0;
+	
+	eax = [p1*40+D5304];		// top type-specific string
+	if (eax != 0) {
+		StringDrawWrapShadow (eax, ebp-0x3c, b[D5287], [p1*40+D5305], ebx+2, 0);
+	}
+	ebx += [p1*40+D5306];
+	
+	// Render entries
+	for (esi=[D9050], edi=p1*40+D5308;
+		esi < [D9051] && [edi]+ebx < 0x94; esi++)
+	{
+		eax = D9048 + esi*48;
+		eax = F329 (eax, p1, ebx, esi-[D9050]);
+		ebx += [edi];
+		if (eax > ebx) ebx = eax;
+	}
+
+	[D8692] = esi - [D9050];
+	F330 (esi < [D9051], [D9050] != 0);		// draw "more" arrows
+
+	if ([p1*40+D5312] != 0) F566 ();		// draw "go back" arrow
+	[D8693] = 1;
+}
+
+// Adds clickable button to Services screen
+
+void F328 (int bmpindex, int x, int y, int w, int h, int action)
+{
+	BlitIndexToBuf (p1, p2, p3);
+	if ([D8693] != 0) return;
+
+	GuiAddHotRect2 (p2, p3, p4, p5, p6);
+	[[D8694]*4+D8695] = p6;
+	[D8694]++;
+}
+
+// Writes Services entry including buttons
+
+int F329 (ServEntry *p1, int servscreen, int ypos, int action)
+{
+	switch ([p2*40+D5313])
+	{
+		case 2:		// Equipment-upgrades type buttons
+		F328 (0x2e, [p2*40+D5309], p3, 8, 9, p4+0x80);
+		if (!([p1+0x18] & 0x1)) break;
+		F328 (0x2e, [p2*40+D5310], p3, 8, 9, p4+0x90);
+		break;
+
+		case 1:		// Stockmarket type buttons
+		F328 (0x2e, [p2*40+D5309], p3, 8, 9, p4+0x80);
+		F328 (0x2e, [p2*40+D5310], p3, 8, 9, p4+0x90);
+		break;
+
+		case 0:		// Simple type button
+		F328 (0x2e, [p2*40+D5309], p3, 8, 9, p4+0x80);
+		break;
+	}
+
+	// J1943
+	s5 = [p1+0x4]; s4 = [p1+0x8];
+	s3 = [p1+0xc]; s2 = [p1+0x24];
+	s1 = [p1+0x2c];
+	
+	eax = [p2*40+D5311];
+	edx = 0x140 - 3 - eax;
+	eax = StringDrawWrapShadow ([p1], &s5, b[D5286], eax, p3+1, edx);
+	return p3 + 10*eax;
+}
+
+// Draw up, down arrows
+
+void F330 (int upflag, int downflag)
+{
+	if (p1 == 0 && p2 == 0) return;
+	if (p1 == 0) F328 (0x30, 0x7c, 0x93, 0x8, 0x9, 0x8f);
+	if (p2 == 0) F328 (0x2f, 0x88, 0x93, 0x8, 0x9, 0x9f);
+	StringDrawWrapShadow (0x98e9, ebp-0x14, b[D5286], 0x94, 0x94, 0xa9);
+}
+
+
+// Switch to screen
+
+void F331 (p1, p2, p3, p4, p5, p6)
+{
+	if (b[D8640] == 0)
+	{
+		F923 (0xc);
+		b[D8640] = 0xff;
+		for (ebx=0x32; ebx<=0x36; ebx++) {
+			ConsoleSetButtonImage (ebx, 0);
+			ConsoleShowButton (ebx);
+		}
+		ConsoleSetButtonImage (0xb, 1);
+	}	
+	[D9054] = p1;	// Current Services screen
+	[D9052] = p2;	// Current screen name ffcode
+	[D9056] = p4;	//
+	[D9057] = p5;
+	[D9061] = p6;
+	if (p3 != 0) F352 (p3);		// Output to console
+	F342 ();
+}
+
+void F332 (p1, p2)
+{
+	F359 ();
+	b[D8641] |= 1;
+	[D9049] = p2;
+	[D9054] = p1;
+	[D9052] = 0;
+	F342 ();	
+}
+
+
+// Switch to root services screen
+
+void F333 ()
+{
+	if ([D5315] != 0)
+	{
+		eax = F1538 ([[D8861]+0x82]);
+		cx = w[[eax+0x38]+0x6];			// original mass
+		eax = w[[D8861]+0xe4] * 100 / 4;	// damage?
+		edi = eax / cx;		// percentage, possibly
+
+		[D5315] = 0;
+		if (w[D8996] == 0)		// current system allegiance
+		{
+			[D2321] = D5265;
+			[D2321+4] = 0x8;
+			if (edi < 0x4b && F922 (2)) {
+				[D2321] = D5263;
+				[D2321+4] = 0xd;
+			}
+			if ([D9095+w[D8996]*4] > 0x32 && F922 (2)) {	// fines
+				[D2321] = D5264;
+				[D2321+4] = 0x8;
+			}
+			if (w[D8995] < 0xb4 && F922 (2)) {		// unknown
+				[D2321] = D5266;
+				[D2321+4] = 0xa;
+			}			
+		}
+		else if (w[D8996] == 1)
+		{
+			[D2321]	= D5261;
+			[D2321+4] = 0x9;
+			if ([D8912] >= 0x2710 && F922 (2)) {
+				[D2321] = D5262;
+				[D2321+4] = 0x6;
+			}		
+		}
+		else if (w[D8996] == 2)
+		{
+			[D2321] = D5260;
+			[D2321+4] = 0x7;
+			if ([D8913] >= 0x2710 && F922 (2)) {
+				[D2321] = D5259;
+				[D2321+4] = 0x6;
+			}
+			if (edi < 0x4b && F922 (2)) {
+				[D2321] = D5258;
+				[D2321+4] = 0x4;
+			}
+		}
+		else {
+			[D2321] = D5257;
+			[D2321+4] = 0x9;
+		}
+
+		// J1958
+		if (F922 (0x14) < 3) {
+			[D2321] = D5267;
+			[D2321+4] = 0x9;
+		}
+		if (w[D8996] == 4 || [[D8862]+0x82] == 0x45) {
+			[D2321] = 0;
+			[D2321+4] = 0;
+		}
+	}
+	// J1961
+
+	b[D8804+0x3f42] = 0;
+	b[D9062] = 0;
+	[ebp-0x14] = [D8862];
+	eax = [D8845] >> 0x10 | [D8845] << 0x10;
+	[ebp-0x30] = 0x98dc;			// Which service do you require?
+	F331 (0, 0x98d2, ebp-0x30, eax, 1, 0x8000);		// ... Services
+
+	// Add base services entries
+	F348 (0x9819, ebp-0x30);	// Launch request
+	if (w[D8996] != 4) {
+		F348 (0x980a, ebp-0x30);	// shipyard
+		F348 (0x980b, ebp-0x30);	// bulletin board
+		F348 (0x980c, ebp-0x30);	// stockmarket
+	}
+	F335 ();		// Render!
+}
+
+void F334 (p1)
+{
+	F352 (p1);
+	F336 (0);
+}
+
+void F335 ()
+{
+	F336 (0);
+}
+
+void F336 (p1)
+{
+	F1572 (0, D5316);		// Set background colour
+	F956 (0);				// Set background image
+	F327 (p1);				// Render services screen
+	F565 ();				// Start up video crap
+	F558 ();				// Render cash/cargo/cabin info
+	FlipScreen ();
+}
+
+void F337 (p1)
+{
+	F352 (p1);
+	F338 ();
+}
+
+void F338 ()
+{
+	F336 (2);
+}
+
+// Event 8 function
+
+void F339 (p1)
+{
+	if (p1 != 0) return;
+	if (b[D8640] == 0 && !(b[D8641] & 1)) return;
+
+	F34 (0, 2);
+	F34 (0, 0);
+	b[D8640] = 0;
+	b[D8641] = 0;
+	F117 ();		// Kill video
+	F358 ();
+	F271 (0, 0, 0);
+	if (b[D9062] != 0) F148 (0x12, 0);
+	F1573 ();		// Clear, copy palette thingy?
+	for (ebx=0x32; ebx<=0x36; ebx++) ConsoleHideButton (ebx);
+}
+
+void F340 ()
+{
+	F332 (9, 0x54f42);
+}
+
+void F341 ()
+{
+	[D8688] = 0;
+	[D9051] = 0;	// Clear BBS list
+	F358 ();
+}
+
+void F342 ()
+{
+	F34 (0, 2);
+	F34 (0, 0);
+	F341 ();
+	[D9050] = 0;
+}
+
+// Event 1 function - switch to?
+// Displays services if docked, otherwise comms
+
+void F343 ()
+{
+	b[D7689] = 0;
+	if (b[D8870] == 0x2a || b[D8870] == 0x30)	// if docked
+	{
+		for (ebx=0x2c; ebx <= 0x36; ebx++)
+			ConsoleSetButtonImage (ebx, 0);
+		F333 (); return;
+	}
+	F340 ();
+	F348 (0x9803, ebp-0x30);		// Broadcast message...
+	if (b[D8874] != 0)
+	{
+		eax = F1532 (b[D8874], [D9133]);
+		if ((b[eax+0x118] != 0xff && [eax+0x82] >= 0xf 
+			&& [eax+0x82] <= 0x3f) || b[eax+0x14c] & 0x10)
+		{
+			[ebp-0x30] = 0x9802;		// Send message to
+			[ebp-0x14] = eax;
+			[ebp-0xc] = eax+0x124;		// obj name
+			F345 (ebp-0x30);
+		}
+	}
+	// J1972
+	eax = F1532 ([[D8861]+0x56], [D9133]);
+	if (b[eax+0x14c] & 0x10)
+	{
+			[ebp-0x30] = 0x9800;	// request docking clearance
+			[ebp-0x14] = eax;
+			[ebp-0xc] = eax+0x124;		// obj name
+			F345 (ebp-0x30);
+	}
+	for (ebx=0x72; ebx>0; ebx--)	// check other "clearances"
+	{
+		if (b[[D9133]+ebx] == 0) continue;
+		F344 ([D9133]+338*ebx+0x74, b[[D8861]+0x56]);
+	}
+	[ebp-0x24] = [D9095+w[D8896]*4];
+	if ([ebp-0x24] != 0) {
+		[ebp-0x30] = 0x9809;	// Pay find by remote...
+		F345 (ebp-0x30);
+	}
+	if (b[D8887] != 0) {
+		[ebp-0x30] = 0x9830;	// Set target to source of last message
+		F345 (ebp-0x30);
+	}
+}
+
+// Check for and insert "request landing clearance" entry
+// into services list
+
+void F344 (PhysObj *p1, PhysObj *p2)
+{
+	if (!(b[p1+0x14c] & 0x10)) return;	// starport
+	if (p2 != b[p1+0x56]) return;		// frame of ref.
+	if (b[p1+0x88] > 0x13) return;		// distance
+
+	ecx = 0x9801;						// Request landing clearance
+	if (!(b[p1+0x14c] & 0x20)) ecx--;	// request docking clearance
+	[ebp-0x30] = ecx;
+	[ebp-0x14] = p1;
+	[ebp-0xc] = p1+0x124;
+	F345 (ebp-0x30);
+}
+
+// Copies Services item into current list
+
+void F345 (ServEntry *p1)
+{
+	if ([D9051] >= 0x2d) return;
+	edi = 48*[D9051]++ + D9048;
+	memcpy (edi, p1, 48);
+}
+
+// Only used by mission scripter
+// Insert ServEntry into random position
+
+void F346 (ServEntry *p1)
+{
+	if ([D9051] > 0x2d) return;
+	if ([D9051] > 0) {
+		edx = [p1+0x0] | [p1+0x0] << 16;
+		s1 = s2 = edx;
+		eax = F921 ([D9051], &s1, &s2);		// randomise position
+	}	
+	else eax = 0;
+
+	esi = 48*eax + D9048;
+	edi = 48*[D9051]++ + D9048;
+	memcpy (edi, esi, 48);	
+	memcpy (esi, p1, 48);
+}
+
+// Copies entry into static one...
+
+void F347 (ServEntry *p1)
+{
+	memcpy (D8688, p1, 48);
+}
+
+// Copy entry into list with replaced ffcode
+
+void F348 (ffcode? p1, ServEntry *p2)
+{
+	[p2] = p1;
+	F345 (p2);
+}
+
+
+
+// All these end up writing messages to the console
+
+void F349 (ServEntry *p1)
+{
+	if (b[D8870] != 0x4) SysMenuPlayTime ();
+	F351 (p1);
+}
+
+// Write ServEntry to console message thing
+
+void F350 (ServEntry *p1, int p2)
+{
+	esi = ebp+0xfffff7ec;
+	sb = ebp+0xffffff800;
+
+	[esi+0x4] = [p1+0x8];
+	[esi+0x8] = [p1+0xc];
+	if ([p1+0x18] >= 0)
+	{
+		if (!([p1+0x18] & 1))		// Launch clearance etc.
+		{
+			[esi+0x0] = [p1+0x0];
+			[esi+0xc] = [p1+0x2c];
+			if ([p1+0x1c] == 0) [esi+0x10] = D9148;
+			else [esi+0x10] = [p1+0x1c] + 0x124;
+			eax = 0x9917;		// Message from ... : ...
+			bl = 0x5f;
+		}
+		else {
+			[esi+0x0] = [p1+0x4];
+			[esi+0xc] = [p1+0x24];
+			[esi+0x10] = [p1+0x2c];
+			eax = [p1+0x0];
+			bl = 0x5f;
+		}
+	}
+	else {
+		[esi+0x0] = [p1+0x4];
+		[esi+0x4] = [p1+0x8];
+		[esi+0x8] = [p1+0xc];
+		[esi+0xc] = [p1+0x24];
+		[esi+0x10] = [p1+0x2c];
+		eax = [p1+0x0];
+		bl = 0x11;
+	}
+	StringExpandFFCode (sb, eax, esi);
+	if (p2 == 0) eax = 1; else eax = 0;
+	F271 (sb, ebx, eax);
+}
+
+void F351 (ServEntry *p1)
+{
+	if (b[D8870] == 0x2c) return;
+	if ([p1+0x18] >= 0) SoundPlaySample (0x16);
+	F350 (p1, 1);
+}
+
+void F352 (ServEntry *p1)
+{
+	memcpy (ebp-0x30, p1, 48);
+	[ebp-0x18] = 0xffffffff;
+	F350 (ebp-0x30, 0);
+}
+
+void F353 (ServEntry *p1)
+{
+	[p1+0x8] = [[p1+0x20]];
+	[p1+0x0] = 0x992d;		// Just two ff30 codes
+	F352 (p1);
+}
+
+
+
+// Event 3 function
+
+void F354 ()
+{
+	if (b[D8804+0x3f42] == 0) {			// strange...
+		eax = GuiGetLastAction () & 0xff;
+		if (eax != 0) [D8804+0x48e4] = [D7705];
+	}
+	if (eax != 0) {
+		if (eax == 0xf5) { F381 (ebp-0x30); return; }	// launch request
+		if (eax == 0xf6) { F382 (ebp-0x60); return; }	// shipyard
+		if (eax == 0xf7) { F453 (ebp-0x90); return; }	// BBS
+		if (eax == 0xf8) { F536 (ebp-0xc0); return; }	// stockmarket
+		if (eax == 0xf9) { F552 (ebp-0xf0); return; }	// police
+		if (eax >= 0x31 && eax <= 0x34) {
+			edx = [D9050] + eax - 0x31;
+			if (edx < [D9051]) F361 (edx, 0);
+		}
+		else if (eax == 0x8f || eax == 0x6) { F356 (1); return; }
+		else if (eax == 0x9f || eax == 0x5) { F356 (-1); return; }
+		else if (eax == 0x3) { F362 (); return; }
+		else if (eax >= 0x80 && eax <= 0x9f) {
+			edx = (eax & 0xf) + [D9050];
+			if (edx < [D9051]) F361 (edx, eax);
+		}
+		else GuiSetLastAction (eax);
+	}
+	// J2007
+	if ([D9054] == 0x6) { F562 (); return; }	// ship view?
+	if ([D9061] == 0) return;
+	if ([D9061] > [D9155]) [D9061] -= [D9155];
+	[D9061] = 0;
+	BlitVidToBuf ();
+	F563 ();			// video function
+	FlipScreen ();		// one-off blitback
+}
+
+int F355 (int p1)
+{
+	eax = p1 + [D9050];
+	if (eax < 0 || [D8692] + eax > [D9051]) return 1;
+	[D9050] = eax; return 0;
+}
+
+void F356 (p1)
+{
+	if (F355 (p1) != 0) return;
+	switch ([D9054])
+	{
+		case 7: F494 (); return;
+		case 8: F445 (); return;
+		case 3: F539 (); return;
+		case 6:
+		case 5:
+		case 4: F385 (); return;
+		case 2: [D9067] = [D9050]; F338 (); return;
+		case 1: F523 (); return;
+		case 11: F541 (0xb); return;
+		default: F335 (); return;
+	}	
+}
+
+// Event 4 function
+
+void F357 ()
+{
+	if (!(b[D8641] & 1)) return;	// overlaid?
+	if (b[D8630] < 0)			// player module active?
+	{
+		ebx = GuiGetLastAction ();
+		if (ebx != 0) switch (ebx)
+		{
+			case 0x8f: F355 (1); break;		// J2023
+			case 0x9f: F355 (-1); break;	// J2024
+
+			case 0x31-0x34:	// J2025
+			eax = [D9050] + (ebx - 0x31);
+			if (eax >= [D9051]) return;
+			F361 (eax, 0); return;			
+
+			case 0x80-0x8e:
+			case 0x90-0x9e:	// J2026
+			eax = ebx & 0xf + [D9050];
+			if (eax >= [D9051]) return;
+			F361 (eax, ebx); return;
+
+			default: // J2027
+			GuiSetLastAction (ebx);
+		}
+		// J2028
+		F327 ([D9054]);
+		[D9049] = [D9049] - [D9122];
+		if ([D9049] < 0) F359 ();
+		return;
+	}
+	// J2029
+	F359 ();
+}
+
+// Clear BBS hot areas
+
+void F358 ()
+{
+	for (esi=0, ebx=D8695; esi<[D8694]; esi++, ebx+=4) {
+		GuiRemoveHotArea ([ebx]);
+	}
+	[D8693] = [D8694] = 0;
+}
+
+void F359 ()
+{
+	if (b[D8641] & 1) {
+		F34 (0, 2);
+		F34 (0, 0);
+	}
+	b[D8641] &= 0xfe;
+	F358 ();
+}
+
+// Switch to specified services screen
+
+void F360 (ServEntry *p1)
+{
+	F117 ();	// Kill video?
+	if (b[D8870] == 0x2a || b[D8870] == 0x30) {
+		F560 ();
+		FlipScreen();
+	}	
+	if ([D7706] != 0x3e2) SysMenuPlayTime ();
+	eax = [p1] - 0x9800;	// !!!!!!!
+	if (eax >= 0 && eax < 0x74 && [eax*4+D5288] != 0) {
+		[eax*4+D5288] (p1);
+		return;
+	}
+	F34 (1, [p1+0x4]);
+	F34 (2, [p1+0x8]);
+	F34 (3, [p1+0xc]);
+	F34 (0, [p1+0x0]);
+	F34 (0, 0);
+}
+
+// Process services entry click
+
+void F361 (int selectedentry, int action)
+{
+	memcpy (ebp-0x30, p1*48 + D9048, 48);
+	[ebp-0x10] = p1*48 + D9048;
+	[ebp-0x18] = p2;
+	SoundPlaySample (0x14);
+	F360 (ebp-0x30);
+}
+
+// Go back to previous services screen
+
+void F362 ()
+{
+	memset (ebp-0x30, 0, 0x30);
+	eax = [[D9054]*40+D5312];
+	if (eax == 0) return;
+	eax -= 0x9800;
+	if (eax >= 0 && eax < 0x74 && [eax*4+D5288] != 0) {
+		[eax*4+D5288] (p1);
+		return;
+	}
+	F34 (0, eax);
+	F34 (0, 0);		// Hmm. Probably never called.
+}
+
+// End of basic BBS code?
+
+void F363 (p1)
+{
+	if (b[D8880] == 0) F651 (b[D8857], [D8862]);
+	F365 (p1);
+}
+
+
+
+
+// Called on docking?
+
+F453 (p1)
+{
+	switch (w[D8996])
+	{
+		case 4: return;
+		case 2: [D2321] = D5280; [D2322] = 0x3; break;
+		case 1: [D2321] = D5281; [D2322] = 0x5; break;
+		default: [D2321] = D5282; [D2322] = 0xd; break;
+	}
+	ConsoleSetButtonImage (0x34, 1);
+	s2 = [[D8862]+0xa0];
+	F504 (&s2, 0x13);
+	F331 (2, 0x98d5, 0, s2, 0, 0x8000);
+	[D9050] = [D9067];
+	eax = F649 (b[[D8862]+0x86]);
+	[D9058] = eax;
+	[p1+0x14] = 0;
+
+	// Copy BBS items into current list
+
+	s1 = [eax+0x2e2];
+	for (edi=0, ebx=eax+0x132; edi < s1; edi++, ebx+=24)
+	{
+		if ([ebx] == 0) continue;
+		[p1] = [ebx];
+		[p1+0x14] = edi;
+		[p1+0x8] = [ebx+0x4];
+		[p1+0xc] = [ebx+0x8];
+		[p1+0x10] = [p1+0x2c] = [ebx+0xc];
+		[p1+0x4] = [ebx+0x10];
+		[p1+0x24] = [ebx+0x14];
+		F345 (p1);
+	}
+	F34 (0, 1);		// Generate mission BBS items?
+	F34 (0, 0);
+	if ([D9051] > 0) [p1] = 0x98dd;
+	else [p1] = 0x98de;
+	F337 (p1);
+}
+
+// Switch-to funcs for crew wanted BBS entry
+
+void F471 (ServEntry *p1)
+{
+	if ([D8922] < 0) F475 (p1);
+	else F474 (p1);
+}
+
+void F472 (ServEntry *p1)
+{
+	if ([D8922] < -9) F475 (p1);
+	else F474 (p1);
+}
+
+void F473 (ServEntry *p1)
+{
+	F474 (p1);
+}
+
+void F474 (ServEntry *p1)
+{
+	[D2321] = D5283;
+	[D2322] = 0xb;
+	[p1] = [[p1+0x20]];		// original entry pointer
+	[D8804+0x48fc] = [[p1+0x20]];
+	[D8804+0x490c] = [p1+0x14];
+	[D8804+0x4900] = [p1+0x8];
+	[D8804+0x4904] = [p1+0xc];
+	[D8804+0x4908] = [p1+0x10];
+	[D8804+0x4910] = [p1+0x24];
+	[D8804+0x4914] = [p1+0x2c];
+	F342 ():						// Clear ServEntry list
+	[D8804+0x48de] = 0x98d8;		// Video link...
+	[D8804+0x48f0] = [p1+0x1c];
+	[D8804+0x491c] = 0x8000;
+	[D8804+0x48f4] = 0;
+	[p1] = 0x9841;					// Questions
+	for (esi=1; esi<=6; esi++, [p1]++) F345 (p1); 	// Add entries
+
+	F348 (0x983f, p1);			// entry with replaced name - hang up
+	[p1+0x8] = [D8804+0x4900];
+	[p1+0xc] = [D8804+0x4904];
+	[p1+0x10] = [D8804+0x4908];
+	[p1+0x14] = [D8804+0x490c];
+	[p1+0x24] = [D8804+0x4910];
+	[p1+0x2c] = [D8804+0x4914];
+	[p1] = 0x9931;		// Hi, I'm ...
+	F352 (p1);			// console message
+	F523 ();			// Render & flip
+}
+
+// Bad rep function for passenger/small item stuff
+
+void F520 (ServEntry *p1)
+{
+	[p1] = 0x991e;		// bad rep string
+	F352 (p1);			// Print to console
+	F342 ();			// Clear ServEntries
+	F348 (0x983f, p1);	// Hang up
+	F523 ();
+}
+
+// Switch-to func for passenger/small item BBS entry
+
+void F521 (ServEntry *p1)
+{
+	[D9059] = 0;
+	[D9060] = [p1+0x4];
+	[p1] = 0x991d;		// Basic output string, D5939
+	F331 (1, [D9052], p1, [p1+0x24], 0, 0x8000);	// Switch to
+	if (-F922 (0x9) > [D8922]) F520 (p1);
+	else {
+		[p1] = 0x9833;		// "Ok-agreed"
+		F522 (p1, 0xd);
+	}
+}
+
+// Create & render passenger/small item service entries
+
+void F522 (ServEntry *p1, int p2)
+{
+	F342 ();	// Clear serventries
+	for (esi=0; p2 > esi; esi++, [p1]++)
+	{
+		if ([p1] == 0x9834 && b[p1+0x11] & 0x20) continue; // How many
+		F345 (p1);
+	}
+	F523 ();
+}
+
+void F523 ()
+{
+	F541 (1);
+}
+
+// "Ok, agreed" function - specific to passenger/parcel
+
+void F534 (ServEntry *p1)
+{
+	if ([D9073] >= 0x3b) {
+		[p1] = 0x9929;			// No room on roster
+		F352 (p1); return;
+	}
+	if (!([p1+0x10] & 0x2000))
+	{
+		eax = ([p1+0x10] & 7) + 1;
+		edx = [D8804+0x11c] - [D8804+0x124];
+		if (eax > edx) {
+			[p1] = 0x9928;		// No cabin space
+			F352 (p1); return;
+		}
+		[D8804+0x124] += eax;
+		F48 (1, 0, 0x10);
+	}
+	if (b[D8804+0x48fc] & 0x10)	{
+		edi = F529 (p1);
+		if (edi != 0) [D8804+0x50d8] |= 1<<edi;
+	}
+	[p1+0x2c] = 0x992a;		// paid on arrival
+	[p1+0x4] = [D8804+0x4900];
+	eax = [D8804+0x48fc];
+	if (eax & 0x80)
+	{
+		if (eax & 0x40) {
+			[p1+0x2c] = 0x992c;		// paid in full
+			eax = [p1+0x4];
+			[p1+0x4] = 0;
+		}
+		else {
+			[p1+0x2c] = 0x992b;		// paid half and half
+			eax = [p1+0x4];
+			[p1+0x4] = [p1+0x4] / 2;
+		}
+		[D8888] += eax * 10;		// add cash
+	}
+	// J2349
+	F353 (p1);		// Output agreement to console
+	F535 (p1);
+	[p1+0x8] = [D8807] + 0x1c;		// finish time
+	// Rosterise...?
+	F290 ([p1+0x10], [p1+0x4], [p1+0xc], [p1+0x8], [p1+0x24]);
+	[p1] = 0x983f;
+	F522 (p1, 1);		// Finish with "hang up"
+}
+
+// Kill station BBS entry
+
+void F535 (ServEntry *p1)
+{
+	[[D9058] + [p1+0x14]*24 + 0x132] = 0;
+}
+
+// Render only
+
+void F540 (int screennum)
+{
+	F956 (0);		// Render background
+	F327 (p1);		// Main render call
+	F558 ();		// Cash/cabin info
+	F1572 (0, D5317);	// Colour thingy...
+}
+
+// Render & flip screen
+
+void F541 (int screennum)
+{
+	F540 (p1);		// Render crap
+	FlipScreen ();
+}
+
+
+// Renders cash/cargo/cabins info
+
+void F558 ()
+{
+	s5 = [D8888]; s4 = [D8891]; s2 = [D8889];
+	s3 = [D8892]; s1 = [D8890]; 
+	StringDrawWrapShadow (0x98e8, &s5, b[D5287], 1, 0x8a, 0);
+}
+
+// Partial cabin background render?
+// For video region? also ship view thing
+
+void F560 ()
+{
+	F957 (1, 0x11, 0x79, 0x89);
+}
+
+// Video 
+
+void F563 ()
+{
+	F564 ([D9056], [D9057]);
+}
+
+void F564 (p1, p2)
+{
+	if (w[D8996] == 4 || [[D8862]+0x82] == 0x45]) return;
+	F913 (p1, p2);
+}
+
+void F565 ()
+{
+	if ([D9061] == 0) { F563 (); return; }
+	F560 ();
+	if ([D5315] == 0) return;
+	if ([D2321] == 0) return;
+	StringDrawWrap (0x98d9, ebp-0x14, [D8673], 0x1e, 0x4c, 0); 
+		// "Connecting video..."
+}
+
+// Draws "Go back" arrow
+
+void F566 ()
+{
+	F328 (0x2e, 0xc8, 0x93, 8, 9, 3);	// add hotspot/icon
+	StringDrawWrapShadow (0x98ea, 0, b[D5286], 0xd2, 0x93, 0);
+		// 98ea = "Go back"
+}
+
+void F567 (p1, p2)
+{
+	[ebp-0x30] = [p2+0x4];
+	F389 (p1, ebp-0x30);
+}
+

@@ -1,0 +1,834 @@
+// Event 0 - init function
+
+void F616 (p1)
+{
+	if ((p1&0xff) != 1) return;
+	[D9009] = 0; [D9008] = 0;
+	[D9007] = 0; [D9006] = 0;
+	F617 ():
+	F622 ([D8885]);
+}
+
+// Install object creation callback
+// set no. starports to zero
+
+void F617 ()
+{
+	[D8997] = 0;
+	F145 ([D9133], F618, 0);
+}
+
+// Object creation callback?
+
+void F618 (p1)
+{
+	if (!(b[p1+0x14c] & 0x10)) return;
+	b[802*[D8997]+D9000] = b[p1+0x86];		// store object index
+	if ([D8997] < 0x12) [D8997]++;			// max 18
+}
+
+// Generates stock price
+// p4, p5 taken from system stock-specific values
+// (supply*variance/pop + base) * danger * illegal 
+// note - pop table negative
+
+void F619 (StockInfo *p1, int pop, int danger, int supply, int flags)
+{
+	ebx = [p2*4+D6165] * [p1+0x4] >> 15;
+	ebx = [p4*4+D6164] * ebx >> 15;		// pricevar*p2table*p4table
+	if (p5 & 0x8) ebx = -ebx;			// negative variance
+	ebx += [p1+0x0];					// add base price
+	if (p5 & 0x80) ebx *= 2;			// illegal
+	ebx = [p3*4+D6166] * ebx >> 15;		// price*p3table
+
+	if (ebx > 0x7fff) ebx = 0x7fff;		// broken?
+	else ebx *= 2;
+	ebx = ((F1530() & 0x3ff) + 0x4000 - 0x200) * ebx;
+
+	if (ebx <= 0x1fffffff) ebx *= 4;
+	else if (ebx <= 0x3fffffff) ebx *= 2;
+	else ebx = 0x7fffffff;
+
+	return ebx >> 16;
+}
+
+// Generates stock availability 
+// (supply*variance + base) * pop / danger / illegal
+// note - danger table negative
+
+void F620 (StockInfo *p1, int pop, int danger, int supply, int flags)
+{
+	ebx = [p4*4+D6164] * [p1+0xc] >> 15;	// availvar*p4table
+	if (!(p5 & 0x8)) ebx = -ebx;			// negative variance
+	ebx += [p1+0x8];						// add base avail
+	ebx = [p2*4+D6167] * ebx >> 15;			// avail*p2table
+	if (p5 & 0x80) ebx >>= 3;				// illegal
+	ebx = [p3*4+D6168] * ebx >> 15;			// avail*p3table
+	
+	eax = ((F1530() & 0x3fff) + 0x4000) * ebx >> 15;
+	if (eax >= 0) ebx += ((F1530() & 0x3fff) + 0x4000) * ebx >> 15;
+	else ebx += -(((F1530() & 0x3fff) + 0x4000) * ebx >> 15);
+
+	if (ebx < 0) return 0;
+	return ebx;
+}
+
+// call random function for D6170 array
+
+void F621 (Starport *p1, BBSEntry *p2)
+{
+	eax = F922 (0x20);
+	[eax*4 + D6170] (p1, p2);
+}
+
+// Generate starport structures for system p1
+
+void F622 (System p1)
+{
+	// Get system params from galaxy code?
+
+	F869 (p1, s-0x20, s-0x24, s-0x40, s-0x44,
+		s-0x48, s-0x4c, s-0x28, s-0x2c);
+	w[D8995] = w[s-0x40];
+	w[D8993] = w[s-0x44];		// chance of military ship
+	[D9010] = [s-0x48];
+	w[D8994] = w[s-0x4c];		// chance of civilian ship
+	w[D8896] = [s-0x2c] >> 6;	// allegiance?
+
+	F870 (p1, s-0x1c, s-0x50, s-0x54, s-0x3c);
+	w[D8991] = w[s-0x50];		// population
+	w[D8992] = w[s-0x54];		// danger
+
+	// Copy stock flags array
+	for(ebx=0, edx=D8989, eax=[s-0x1c];
+		ebx<0x26; ebx++, edx++, eax++) b[edx] = b[eax];
+
+	for (s1=[D8997], esi=D8999; s1>0; s1--, esi+=0x322)
+	{
+		s5 = F1532 (b[esi+0x130], [D9133]);
+
+		// Generate stockmarket price, avail
+		for (ebx=0, s2=esi, s4=D6169, [s-0x58]=D8989;
+			ebx<0x21; [s-0x58]++, ebx++, s2+=8, s4+=10)
+		{
+			edi = b[[s-0x58]];
+			s3 = edi & 7;
+			[s2+4] = F619 (s4, w[D8991], w[D8992], s3, edi);
+			[s2] = F620 (s4, w[D8991], w[D8992], s3, edi);
+			F48 (0x18, [s5+0xa0], ebx+0x3e8);	// weird
+		}
+
+		// Generate BBS entries based on pop.
+		for (ebx=0; ebx<=(w[D8991]<<2); ebx++)
+		{
+			eax = [esi+0x2e2] * 24;
+			F621 (esi, esi+eax+0x132);
+		}
+
+		// Generate shipyard entries
+		[D8998] = ([s5+0xa0] << 16) | ([s5+0xa0] >> 16);
+		if (!(b[s5+0x14c] & 0x20)) b[esi+0x131] |= 0x10;
+		s6 = esi+0x2e6;
+		[esi+0x31e] = 0;	// initial ships = 0
+
+		for (ebx=([D8997]-1)/4; ebx>=0; ebx--) F634 (0xd, esi, &s6);
+		for (ebx=w[D8993]*3; ebx>=0; ebx--) F634 (0, esi, &s6);		
+		for (ebx=w[D8994]*3; ebx>=0; ebx--) F634 (1, esi, &s6); 
+
+		F34 (0x10, b[esi+0x130]);
+		F34 (0x10, 0);
+
+	}	// J2738 
+
+	// military mission generation
+	[D9004] = 0;
+	F871 (p1, s-0x30, s-0x34, s-0x38, s-0x3c, D9003, D9002);
+	[D9001] = ([s-0x38] << 3) + 8;
+	for (ebx=0; ebx<[D9001]; ebx++) F623 ():
+}
+
+// Calls random D6201 func 
+// military stuff
+
+void F623 ()
+{
+	eax = F1530() & 0xf;
+	if ([D9002] < [D9003]) edx = 0;
+	else edx = [D9002] - [D9003];
+	[D6201+eax*4] (edx);
+}
+
+// Adds element to D9004 array
+// note fourth and fifth elements transposed
+
+void F624 (p1, p2, p3, p4, p5, p6)
+{
+	for (edx=0; edx<25; edx++)
+	{
+		eax = D9004 + edx*24;
+		if ([eax] != 0) continue;
+		[eax] = p1; [eax+0x4] = p2;
+		[eax+0x8] = p3; [eax+0x10] = p4;
+		[eax+0xc] = p5; [eax+0x14] = p6;
+		[eax+0x18] = 0;
+		return;
+	}
+}
+
+// Gets syscode, pop of random local system
+
+int F625 (int *syscode)
+{
+	[p1] = F857 ([D6210+4*w[D8996]], F922(3));		// capital or mil...?
+	if ([p1] == 0) return 0;
+	F870 ([p1], &s1, &s4, &s2, &s3);
+	return s4;
+}
+
+// All D6201 functions
+// Military mission generation
+
+// Military assassination mission
+// struct { ffcode, syscode, time, name ffcode, cash?, rand }
+
+void F626 (p1)
+{
+	if (p1 <= 0x100) return;
+	if (F625 (&s1) < 3) return;
+	ebx = F1530() & 7;
+	edx = [D8807] + (F1530() & 0x3f) + 0xe;
+	eax = [ebx*4+D6211];
+	F624 (0x9857, s1, edx, eax, ebx+0x99bc, [D8820]);	// assassination
+}
+
+// Military photo mission
+// struct { ffcode, syscode, time, name ffcode, cash?, rand }
+
+void F627 (p1)
+{
+	if (p1 <= 0x271) return;
+	if (F625 (&s1) < 3) return;
+	ebx = F1530() & 7;
+	edx = [D8807] + (F1530() & 0x3f) + 0xe;
+	eax = [ebx*4+D6212];
+	F624 (0x9855, s1, edx, eax, ebx+0x9966, [D8820]);	// photograph
+}
+
+// Military bombing mission
+// struct { ffcode, syscode, time, name ffcode, cash?, rand }
+
+void F628 (p1)
+{
+	if (p1 <= 0x510) return;
+	if (F625 (&s1) < 3) return;
+	ebx = F1530() & 7;
+	edx = [D8807] + (F1530() & 0x3f) + 0xe;
+	eax = [ebx*4+D6213];
+	F624 (0x9856, s1, edx, eax, ebx+0x9966, [D8820]);	// bombing
+}
+
+// Various delivery missions
+// struct { ffcode, syscode, time, name ffcode, cash?, rand }
+
+void F629 (p1)
+{
+	F632 (8, 0x996e);
+}
+
+void F630 (p1)
+{
+	if (p1 <= 0x10) return;
+	F632 (4, 0x9976);
+}
+
+void F631 (p1)
+{
+	if (p1 <= 0x51) return;
+	F632 (4, 0x997a);
+}
+
+F632 (p1, p2)
+{
+	s3 = F922 (p1);
+	s1 = [D8885];
+	esi = F922 (3);
+	s2 = F857 (s1, esi);
+	if (s2 == 0) return;
+
+	F870 (&s2, &s4, &s5, &s6, &s7);
+	if (s5 < 3) return;
+
+	F1530 ();
+	edx = [D8807] + 0xa + F922(0xe);
+	ebx = s3 + p2;
+	eax = 0xffe2091a + (ebx+esi*2) * 50;	// -1963750
+	F624 (0x9854, s2, edx, eax, ebx, [D8820]);		// Delivery
+}
+
+// Day event update function
+
+F633 ()
+{
+	for (ebx=[D8807]+4, edx=eax=D9004; [eax]!=0; eax+=0x18)
+	{
+		if (ebx > [eax+8]) continue;	// expiry time
+		memcpy (edx, eax, 0x18);		// compactor, essentially
+		edx += 0x18;
+	}
+	[edx] = 0;
+	for (ebx=0; ebx<3; ebx++) {
+		if (F922 (0x19) <= [D9001]) F623 ();
+	}
+	s3 = w[D8991];
+	s4 = w[D8992];
+
+	for (s1=0; s1<[D8997]; s1++)	// J2758
+	{
+		edi = D8999 + 802*s1;		// starport pointer
+
+		// Update prices
+
+		s7 = F1532 (b[edi+0x130], [D9133]);
+		for (s8=D8989, ebx=0; ebx<0x21; ebx++, s8++)
+		{
+			s6 = b[s8]; s5 = s6 & 7;
+			esi = edi + ebx*8;
+			eax = F619 (ebx*16+D6169, s3, s4, s5, s6);
+			[esi+4] = (eax + [esi+4]*3) / 4;		// price mod
+			eax = F620 (ebx*16+D6169, s3, s4, s5, s6);
+			[esi] = (eax + [esi]*3) / 4;			// supply mod
+			F48 (0x18, [s7+0xa0], ebx+1000);
+		}
+
+		// Update bulletin board
+
+		if (F922 (0x7) < w[D8991])
+		{
+			eax = edi + 24*F922 ([edi+0x2e2]) + 0x132;
+			switch ([eax]) {
+				case 0x9829: dl = 0xfd;
+				if ([eax+4] >= 0) dl += 1;
+				b[edi+0x131] &= dl;
+				case 0x9827: b[edi+0x131] &= 0xfb;
+				case 0x9828: b[edi+0x131] &= 0xf7;
+			}
+			[eax] = 0;
+			ebx = [edi+0x2e2];
+			[edi+0x2e2] -= 1;
+			F621 (edi, eax);	// replace entry
+			[edi+0x2e2] = ebx;
+		}	// J2766
+
+		// Update shipyard
+
+		s2 = edi + 0x2e6;
+		edx = F922 (0xe);
+		eax = [edi+0x31e] - edx;
+		if (eax > 0) {
+			memmove (s2+edx*4, s2+edx*4+4, eax*4);
+			[edi+0x31e] -= 1;
+		}
+		s2 += [edi+0x31e]*4;
+		if (F922 (0x9) < w[D8993]) F634 (0, edi, &s2);
+		if (F922 (0x9) < w[D8994]) F634 (1, edi, &s2);
+		if (F922 (0x1b) < [D8997]) F634 (13, edi, &s2);
+
+		F34 (0x10, b[edi+0x130]);
+		F34 (0x10, 0);
+	}
+	return;
+}
+
+// Adds random ship to shipyard list of Starport structure
+// p1 always 1?
+
+struct GenShip { word modelidx, tableidx; };
+
+void F634 (int p1, Starport *p2, GenShip *p3)
+{
+	F1530 ();
+	if ([D8820] & 0x8) return;			// random non-gen
+	if ([p2+0x31e] >= 13) return;		// max ships?
+
+	eax = F635 (p1, [p3]+2);
+	w[[p3]] = ax;
+	[p3] += 4;
+	[p2+0x31e] += 1;
+}
+
+// picks random ship model index from table
+// 1 or 0: table pointer based on current system
+//		otherwise table pointer indexed with p1
+// 1: table size clamped by w[D8991] if < 4
+// 16: Index passed in p2 (actually fractional 16.16 val)
+//		otherwise table index generated randomly
+// F658 is direct wrapper func
+
+word F635 (int tablenum, word *pIndex)
+{
+	ebx = p1;
+	if (p1 == 1 || p1 == 0) ebx = 2 * w[D8996];		// current system?
+	eax = [ebx*8+D6199];		// table size
+	if (p1 == 1 && w[D8991] < 4) eax = w[D8991]*eax >> 2;
+	if (p1 != 16) {
+		eax = F922 (eax);
+		w[p2] = w[D8820];
+	}
+	else eax = w[p2] * [ebx*8+D6199] >> 16;
+	return [[ebx*8+D6200]+eax*4];
+}
+
+
+// F636->F645 BBS entry generation functions
+
+// Missing person ad
+// struct { ffcode, 1, syscode, 1|2, cash, name? }
+
+int F636 (Starport *p1, BBSEntry *p2)
+{
+	esi = 2;
+	ebx = [D9009]; [D9009] = 0;
+	if (ebx == 0) {
+		ebx = [D9008]; [D9008] = 0;
+		if (ebx == 0) {
+			ebx = [D9007]; [D9007] = 0;
+			if (ebx == 0) {
+				ebx = [D9006]; [D9006] = 0;
+				if (ebx == 0) return 0;
+				else esi = 1;
+			}
+		}
+	}		
+	s1 = F857 ([D8885], 1);			// select random system
+	if (s1 == 0) return 0;
+	if (ebx < 0) eax = 0x981e;
+	else eax = 0x981d;
+	edx = (ebx&3)*40 + 0x50;
+	F646 (p1, p2, eax, 1, s1, esi, edx, ebx);
+	return 1;
+}
+
+// Different sort of missing person ad
+// struct { ffcode, 1, syscode, 1, cash, name? }
+
+int F637 (Starport *p1, BBSEntry *p2)
+{
+	F1530 ();
+	ebx = [D8820];
+	s2 = F857 ([D8885], 1);
+	if (s2 == 0) return 0;
+	if (ebx < 0) eax = 0x981e;
+	else eax = 0x981d;
+	edx = (ebx&3)*40 + 0x50;
+	F646 (p1, p2, eax, 1, s2, 1, edx, ebx);
+	return 1;	
+}
+
+// Passenger or parcel ad
+// struct { ffcode, type ffcode, syscode, flags, cash, name? }
+// flags: 0x7 - n.pass, 0x1e00 - danger, 0x2000 - parcel
+// note - can set [D9006] for non-parcel cases
+
+int F638 (Starport *p1, BBSEntry *p2)
+{
+	for (esi=0; esi<4; esi++)
+	{
+		s6 = F922 (3);
+		s7 = F857 ([D8885], s6);
+		if (s7 == 0 || s7 == [D8885]) continue;
+		F870 (s7, &s1, &s4, &s2, &s3);
+		if (s4 < 3) continue;
+		F1530 ();
+
+		eax = [D8818]; ecx = [D8820];
+		edx = [D8818] & 7;				// number of passengers
+		s5 = [edx*8 + D6171];			// mission type (group, parcel etc.)
+		esi = (s6+3) * [edx*8 + D6172];	// number multiplier
+		if (edx == 7) edx |= 0x2000;
+
+		eax = eax * eax >> 0x10;
+		eax = (eax * eax >> 0x13) & 0x1e00;		// danger flags
+		edx += eax;
+		eax = (eax >> 9) & 0xf;
+		esi += [eax*4 + D6173];					// danger money
+		if (eax >= 0xf && !(edx & 0x2000)) [D9006] = ecx;
+
+		eax = (ecx & 0x7) + w[D8992];			// local danger money
+		esi = esi * [eax*4 + D6174];
+
+		if (ecx & 0x1000) F646 (p1, p2, 0x981b, s5, s7, edx, esi, ecx);
+		else F646 (p1, p2, 0x981a, s5, s7, edx, esi, ecx);
+		return 1;
+	}
+	return 0;
+}
+
+// Goods bought and sold ad
+// struct { ffcode, 0, 0, 0, rand, rand }
+// Constant for starport/station
+
+int F639 (Starport *p1, BBSEntry *p2)
+{
+	if (b[p1+0x131] & 1) return 0;
+	b[p1+0x131] |= 1;
+
+	for (eax=0x20, edx=D8990; eax >= 0; eax++, edx++)
+		if (b[edx] & 0x80) break;			// test for illegals
+	if (eax < 0) return 0;
+
+	eax = [F1532 (b[p1+0x130], [D9133]) + 0xa0];
+	eax = (eax >> 0xf) | (eax << 0x11);
+	F646 (p1, p2, 0x9829, 0, 0, 0, eax, eax);
+
+}
+
+// Goods bought and sold ad
+// struct { ffcode, -1, 0, 0, rand, rand }
+// Random version - may be police?
+
+int F640 (Starport *p1, BBSEntry *p2)
+{
+	if (b[p1+0x131] & 2) return 0;
+	F1530 ();
+	for (eax=0x20, edx=D8990; eax >= 0; eax++, edx++)
+	{
+		if (!(b[edx] & 0x80)) continue;			// test for illegals
+		b[p1+0x131] |= 2;
+		F646 (p1, p2, 0x9829, -1, 0, 0, [D8818], [D8818]);
+		return 1;
+	}
+	return 0;
+}
+
+// Specific stock wanted
+// struct { ffcode, stock ffcode, price, 0, 0, rand }
+
+int F641 (Starport *p1, BBSEntry *p2)
+{
+	ebx = F922 (0xc);
+	for (eax=p1+0x100, edx=0x20; edx>=0; edx--, eax-=8)
+	{
+		if ([eax] != 0) continue;		// current stock
+		if (--ebx >= 0) continue;
+		ecx = [eax+0x4];				// price
+		esi = ecx + ecx;
+		if (ecx ^ esi < 0) continue;	// check for overflow
+		F646 (p1, p2, 0x982a, edx+0x8e00, esi, 0, 0, [D8818]);
+	}
+	return 0;
+}
+
+// Military
+// struct { ffcode, 0, 0, 0, 0, 0 }
+
+int F642 (Starport *p1, BBSEntry *p2)
+{
+	if (w[D8996] != 1)
+	{
+		if (w[D8896] != 2) return 0;
+		if (b[p1+0x131] & 0x4) return 0;
+		b[p1+0x131] |= 0x4;
+		F646 (p1, p2, 0x9827, 0, 0, 0, 0, 0);
+		return 1;
+	}
+	else {
+		if (b[p1+0x131] & 0x8) return 0;
+		b[p1+0x131] |= 0x8;
+		F646 (p1, p2, 0x9828, 0, 0, 0, 0, 0);
+		return 1;
+	}
+}
+
+// Assassination
+// struct { ffcode, time, syscode, name ffcode, cash, rand }
+
+int F643 (Starport *p1, BBSEntry *p2)
+{
+	for (esi=0; esi<4; esi++)
+	{
+		ebx = F922 (3);
+		s1 = F857 ([D8885], ebx);	// Get (local) system...
+		if (s1 == 0) continue;
+		F870 (s1, &s2, &s3, &s5, &s4);		// Get system params
+		if (s3 < 3) continue;
+
+		F1530 ();
+		edi = [D8818];				// Completely random number
+		esi = [D8820] & 0xf;		// Random index thingy
+		F1530 ();
+		edx = [D8807] - 0x121cf7 + ([D8820] & 0x3f) + 7;	// time, days
+
+		eax = ebx*8*5*5*5 + [esi*8 + D6214];		// Money
+		ecx = 0x99b4 + [esi*8 + D6215];				// Name/position string
+		esi = (([D8818] >> 0x10) & 0x3) + 0x981f;	// Basic assass. string
+
+		F646 (p1, p2, esi, edx, s1, ecx, eax, edi);
+		return 1;
+	}
+	return 0;
+}
+
+// Unemployed crew
+// struct { ffcode, 0, 0, 0, 0, rand }
+
+int F644 (Starport *p1, BBSEntry *p2)
+{
+	F1530 ();
+	eax = 0x9823 + (([D8820] >> 0x10) & 0x3);
+	F646 (p1, p2, eax, 0, 0, 0, 0, [D8820]);
+	return 1;
+}
+
+// Charity
+// struct { ffcode, name ffcode, 0, 0, rand1, rand2 }
+
+int F645 (Starport *p1, BBSEntry *p2)
+{
+	F1530 ();
+	eax = 0x99d7 + ([D8818] & 7);
+	F646 (p1, p2, 0x982c, eax, 0, 0, [D8820], [D8818]);
+	return 1;
+}
+
+// BBS entry adding function
+
+void F646 (Starport *p1, BBSEntry *p2, p3, p4, p5, p6, p7, p8)
+{
+	if ([p1+0x2e2] >= 0x12) return;		// Max BBS entries
+	[p1+0x2e2]++;
+
+	[p2] = p3; [p2+0x4] = p4;
+	[p2+0x8] = p5; [p2+0xc] = p6;
+	[p2+0x10] = p7; [p2+0x14] = p8;
+}
+
+
+// Starport module event 5
+// Sets object time to current... weird
+
+void F647 (p1)
+{
+	[[p1+0x8]+0xa8] = [p1+0x0];
+	[[p1+0x8]+0xac] = [p1+0x4];
+}
+
+// Starport module event 2
+
+void F648 (p1)
+{
+	switch (p1)
+	{
+		case 0x2:
+		F617 ();				// Sets up object creation callback
+		[D9009] = [D9008];
+		[D9008] = [D9007];
+		[D9007] = [D9006];
+		[D9006] = 0;			// random name list
+		F622 ([D8885]);			// Creates starports for new system
+
+		case 0xf:
+		if (b[D8870] != 4) F633 ();		// day update (non-HS)
+	}
+}
+
+// Returns starport pointer that matches objindex...
+
+Starport *F649 (int objindex)
+{
+	for (eax=D8999, edx=[D8997]; edx>=0; edx--, eax+=0x322)
+		if (b[eax+0x130] == p1) break;
+	if (edx < 0) return 0;
+	else return eax;
+}
+
+// Allocates docking bay/pad, gets vector, number
+// p4 set to -1 if new bay allocated, 0 for old one
+
+int F650 (PhysObj *starport, int shipindex, Vec64 *padpos, int *flag, int *padnum)
+{
+	s1 = 0;
+	if (p2 == [D8857])		// Player object
+	{
+		F34 (0x17, b[p1+0x86]);
+		eax = F35 (0x17);
+		if (eax == 0) return 0;
+		F34 (0x17, 0);
+	}
+	// find empty pad/bay
+	for (edx=w[p1+0xce], eax=p1+edx+0xd0; edx>=0; eax--, edx--)
+	{
+		if (b[eax] == p2) break;
+		if (b[eax] != 0) continue;		// taken
+		b[eax] = p2; s1--; break;		// odd...
+	}
+	if (edx < 0) return -1;
+	if (p2 == [D8857]) [D8879] = edx;
+	[p5] = edx;
+
+	if (!(b[p1+0x14c] & 0x40)) {		// not open-air
+		s4 = s3 = 0;
+		s2 = -1;
+	}
+	else {
+		switch ([p1+0x82])				// various open-air types
+		{
+			case 0x51, 0x52: eax = D6178; break;
+			case 0x55: eax = D6177; break;
+			case 0x56: eax = D6176; break;
+			case 0x59: eax = D6175; break;
+			default: eax = D6179;
+		}
+		[p4] = [p5];
+		s4 = [eax+[p5]*12+0x0];
+		s3 = [eax+[p5]*12+0x4];
+		s2 = [eax+[p5]*12+0x8];
+		VecMatMul (&s4, &s4, p1);
+		VecLShift (&s4, 0xa);
+	}
+	Vec32to64 (p3, &s4);
+	[p4] = s1;
+	return 0;
+}
+
+// Launch function? More likely final clearing - close door
+
+void F651 (int shipindex, PhysObj *starport)
+{
+	for (edx=w[p2+0xce], eax=p2+edx+0xd0; edx>=0; eax--, edx--)
+	{
+		if (p2 != b[eax]) continue;
+		b[eax] = 0; break;
+	}	
+	b[p2+0xc9] = 1;		// mode
+	b[p2+0xca] = 0;		// object currently processing
+	w[p2+0xd8] = 0;		// timeout? flags
+}
+
+// Check for docking completion?
+// Only called when pad/bay has been hit - also finishes process
+
+int F652 (int shipindex, PhysObj *starport)
+{
+	if (p1 != b[p2+0xca]) return 0;
+	b[p2+0xc9] = 3;
+	w[p2+0xd8] = 0x7080;
+	return 1;
+}
+
+// Complete docking, reset
+
+void F653 (PhysObj *p1)
+{
+	b[p2+0xc9] = 0;
+	b[p2+0xca] = 0;
+	w[p2+0xd8] = 0;
+}
+
+// Request launch permission
+// also used for docking by F655
+
+int F654 (int shipindex, PhysObj *starport)
+{
+	if (b[p2+0xc9] != 0 && b[p2+0xc9] != 1 && b[p2+0xca] != p1)
+		return 0;
+	b[p2+0xc9] = 0xff;
+	b[p2+0xca] = p1;
+	w[p2+0xd8] = 0x7080;
+	return 1;
+}
+
+// High-level docking request function
+
+int F655 (PhysObj *ship, PhysObj *starport, Vec64 *padpos, int *padnum)
+{
+	ebx = b[p1+0x86];
+	if (b[p1+0x86] == [D8857] && [w[D8996]*4+D9095] >= 0x2710) {
+		F656 (p2, ebx, 0x98b9, [p4]);		// outstanding fines
+		return 1;
+	}
+	eax = F654 (ebx, p2);					// request docking permission
+	if (eax == 0) {
+		F656 (p2, ebx, 0x98b7, [p4]);		// Traffic control busy
+		return 1;
+	}
+	eax = F650 (p2, ebx, p3, &s1, p4);		// get pad/bay offset
+	if (eax != 0) {
+		b[p2+0xc9] = 0;
+		b[p2+0xca] = 0;
+		w[p2+0xd8] = 0;
+		F656 (p2, ebx, 0x98b8, [p4]);		// All bays full
+		return 1;
+	}
+	if (s1 == 0) F656 (p2, ebx, 0x98bc, [p4]);	// Clearance already granted
+	else F656 (p2, ebx, 0x98ba, [p4]);			// Clearance granted
+	return 0;
+}
+
+// String writer and sound player for docking
+
+void F656 (PhysObj *starport, int shipindex, ffcode p3, int padnum)
+{
+	if (p2 != b[D8857]) return;
+	if (p3 == 0x98ba && b[D9033] && [D9116] != 0xf)
+		SoundPlaySong (0xf);
+
+	[ebp-0x14] = [p1+0xa0];
+	[ebp-0x30] = p3;
+	[ebp-0x18] = 0;
+	[ebp-0x28] = p4+1;
+	[ebp-0x24] = (p2 >> 0x10) | (p2 << 0x10);
+	F349 (ebp-0x30);
+}
+
+// Returns non-zero if object is currently docking
+
+int F657 (int objindex, PhysObj *starport)
+{
+	if (b[p2+0xca] == p1) return -1;
+	else return 0;
+}
+
+// Direct wrapper for ship picker function
+
+word F658 (int tablenum, word *pIndex)
+{
+	return F635 (p1, p2);
+}
+
+// Not entirely sure. Police exits? four per table
+
+void F659 (PhysObj *starport, p2, Vec64 *p3)
+{
+	if (b[p1+0x14c] & 0x40)
+	{
+		switch (w[p1+0xce])
+		{
+			case 3: edx = D6203; break;
+			case 1: edx = D6202; break;
+			case 0: edx = D6205; break;
+			default: edx = D6204; break;
+		}
+	}
+	else if (b[p1+0x14c] & 0x20) edx = D6209;
+	else {
+		s3 = [p2*12 + D6206];
+		s2 = [p2*12 + D6207];
+		s1 = [p2*12 + D6208] >> 2;
+		Vec32to64 (p3, &s3);
+		return;
+	}
+	s4 = [edx+p2*12+0x0];
+	s3 = [edx+p2*12+0x4];
+	s2 = [edx+p2*12+0x8];
+	VecMatMul (&s4, &s4, p1);
+	VecLShift (&s4, 0xa);
+	Vec32to64 (p3, &s4);
+}
+
+// Starport module event 6
+
+void F660 ()
+{
+	// Null function
+}
+

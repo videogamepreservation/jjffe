@@ -1,0 +1,2144 @@
+
+
+void F149 (PhysObjList *p1, uint tics, uint days)
+{
+	s3 = p2; s2 = p3;
+	[D7758] = [D9133];
+	for (esi=0x72, ebx=p1+0x9783, edi=p1+0x72;		// offset 0x8b
+		esi > 0; esi--, ebx+=338, edi--)
+	{
+		if (!(b[edi] & 1)) continue;
+		if (--b[ebx] != 0) continue;					// timeout
+		b[ebx] = b[ebx-1];
+		s1 = esi*338 + p1 + 0x74;
+		F144 (b[ebx-4], 5, &s3); 					// offset 0x87
+	}
+}
+
+// Simple wrapper for F635, shipgen func
+
+int F658 (int p1, word *p2)
+{
+	return F635 (p1, p2);		// random shipgen
+}
+
+
+// Various enemy generation functions
+// Specified position
+
+void F661 (Vec64 *p1)
+{
+	F670 (0xe, p1);
+}
+
+void F662 (Vec64 *p1)
+{
+	F670 (0x4, p1);
+}
+
+void F663 (Vec64 *p1)
+{
+	F670 (0x2, p1);
+}
+
+// Something else
+
+void F664 (p1, p2, p3, p4, p5)
+{
+	F672 (p1, p2, p3, p4, p5);
+}
+
+// Various enemy generation funcs
+// Random radial position
+// Use different shipgen tables
+
+void F665 (p1, p2)
+{
+	F669 (0xc, p2, p1);
+}
+
+void F666 (p1, p2)
+{
+	F669 (0x4, p2, p1);
+}
+
+void F667 (p1, p2)
+{
+	F669 (0xe, p2, p1);
+}
+
+void F668 (p1, p2)
+{
+	F669 (0x2, p2, p1);
+}
+
+PhysObj *F669 (int shiptable, int bounty?, int targindex)
+{
+	ebx = F772 (p1);				// generate ship equip
+	if (ebx == 0) return 0;
+	s1.w0 = 0x5000; s1.w1 = 0x31;	// radial distance thingy
+	F702 (ebx, s1);					// generate random start pos
+	b[ebx+0xff] = 9;				// chase?
+	b[ebx+0xfe] = p3;
+	[ebx+0x11a] = p2;				// set bounty, targindex
+	eax = F1530 ();
+	w[ebx+0x102] = eax >> 3;		// random velocity
+	w[ebx+0x106] = eax >> 3;
+	w[ebx+0x104] = eax >> 6;
+	F48 (0x17, 0, b[ebx+0x86]);
+	return ebx;
+}
+
+// Creates new ship with same position as p2, target player
+
+PhysObj *F670 (int shiptable, Vec64 *p2)
+{
+	ebx = F772 (p1)
+	if (ebx == 0) return 0;
+	Vec64Copy (ebx+0x3e, p2, 6*4);
+	[ebx+0xfe] = b[D8857];				// player is target
+	b[ebx+0x25] = 0;
+	b[ebx+0x58] = 0;
+	w[ebx+0x106] = 0xfff6;
+	return ebx;
+}
+
+// Deviate object position in y direction by radius
+// Settles object onto pad
+
+void F671 (PhysObj *p1)
+{
+	eax = F1521 ([p1+0x140], [p1+0xc]);
+	In64Add32 (ebx+0x3e, [ebx+0x3e], [ebx+0x42], eax);
+
+	eax = F1521 ([p1+0x140], [p1+0x10]);
+	In64Add32 (ebx+0x46, [ebx+0x46], [ebx+0x4a], eax);
+
+	eax = F1521 ([p1+0x140], [p1+0x14]);
+	In64Add32 (ebx+0x4e, [ebx+0x4e], [ebx+0x52], eax);
+}
+
+
+// Generate assassination target?
+
+void F672 (int modelindex, p2, int stationindex, int tics, int days)
+{
+	edi = F771 (D6259, 0x10, p1);		// assassination target?
+	if (edi == 0) return 0;
+
+	F791 (0x12, ebp-0x38, [edi+0xa0], edi+0x124);		// generate name
+	esi = F1532 (p3, [D9133]);
+	if (b[esi+0x14c] & 0x20)			// starport, else station
+	{
+		memcpy (edi+0x3e, esi+0x3e, 6*4);
+		memcpy (edi, esi, 9*4);
+		b[edi+0x56] = b[esi+0x56];
+		b[edi+0x57] = 1;
+	}
+	else {
+		b[edi+0x56] = b[esi+0x86];		// should zero? assumption.
+		b[edi+0x57] = 1;
+	}
+	ebx = b[edi+0x86];
+	[edi+0x11a] = -1;
+	b[edi+0x100] = 0;
+	b[edi+0xfe] = b[esi+0x86];
+	eax = F650 (esi, ebx, ebp-0x24, &s1, &s2);		// get pad pos
+	if (eax != 0)						// no room at the inn?
+	{
+		s3.w0 = 0x5000; s3.w1 = 0x31;		
+		F702 (edi, s3);
+		b[edi+0x56] = b[edi+0x57] = 0;
+		b[edi+0x100] = b[esi+0x86];
+		b[edi+0xff] = 0;
+	}
+	else {
+		Vec64Add (edi+0x3e, ebp-0x24);		// offset by pad pos
+		b[edi+0xff] = 0x24;
+		[edi+0xa8] = p4;
+		[edi+0xac] = p5;			// creation time in future?
+		F671 (edi);
+		if (b[esi+0x14c] & 0x40) b[[D7758]+b[edi+0x86]] = 0x4e;
+		else b[[D7758]+b[edi+0x86]] = 0x2;		// Hmm.
+	}
+	F48 (0x17, 0, b[edi+0x86]);
+}
+
+// Event 2 function
+
+void F673 (int p1)
+{
+	switch (p1)
+	{
+		case 0x1: F674 (); break;		// hyperspace entry?
+		case 0x2: F680 (); break;		// hyperspace exit?
+		case 0x10: F686 (); break;		// week event?
+		case 0x13: F679 (); break;
+	}
+}
+
+// Event 2, 0x1
+
+void F674 ()
+{
+	esi = D9133; s1 = D9047;
+	for (ebx=1; ebx<0x72; ebx++)
+	{
+		if (b[[D9133]+ebx] == 0) continue;
+		F675 ([D9133] + 0x152*ebx + 0x74, &s1);
+	}
+	b[s1] = 0;
+}
+
+void F675 (PhysObj *p1, p2)
+{
+	if ((b[p1+0x87] != 0xb || [p1+0x82] < 0xf || [p1+0x82] > 0x3f)
+		&& [p1+0x82] != 0x9a) return;
+
+	if (b[p1+0x118] == 0xc) F677 (p1, p2);			// bounty hunter
+	else if ([p1+0x82] == 0x9a) F678 (p1, p2);		// Trader
+	else if (b[p1+0x118] == 0xfb) F676 (p1, p2);	// pirate
+}
+
+void F676 (PhysObj *p1, p2)
+{
+	F590 (p1, [D8861], &s4, &s1);
+	if (!(b[p1+0xcb] & 1)) return;		// HS cloud analyser
+	F590 (p1, [D8861], &s4, &s1);		// Get relative position of player
+	if (s1 < 0x10) F677 (p1, p2);		// s1 == exp. distance
+}
+
+void F677 (PhysObj *p1, p2)
+{
+	edx = [p2]++;
+	b[edx] = b[p1+0x86];				// add object index to list
+}
+
+void F678 (PhysObj *p1, p2)
+{
+	if (w[p1+0x9e] >= 0) return;		// entry/exit thing?
+	if ([p1+0xf2] != [D8917]) return;
+	F590 (p1, [D8861], &s4, &s1);		// Get relative position of player
+	w[p1+0x9e] = s1;					// dist. between player and cloud. Hmm.
+	edx = [p2]++;
+	b[edx] = b[p1+0x86];
+}
+
+// Event 2, 0x13
+
+void F679 ()
+{
+	ebx = 0;
+	for (ebx=0; (eax = b[D9047 + ebx++]) != 0; ) {
+		eax = F1532 (eax, [D9133]);
+		b[[D7758] + b[eax+0x86]] = 0xa;
+	}
+}
+
+// Event 2, 0x2
+
+void F680 ()
+{
+	for (esi=0; (eax = b[D9047 + esi++]) != 0; )
+	{
+		ebx = F1532 (eax, [D9133]);
+		[ebx+0xf2] = [D8916];
+		[ebx+0x56] = [ebx+0x57] = [ebx+0x25] = 0;
+
+		if ([ebx+0x118] == 0xc) rv = F681 (ebx);		// bounty hunter
+		else if ([ebx+0x82] == 0x9a) rv = F683 (ebx);	// Trader
+		else rv = F682 (ebx);							// pirate
+		if (rv != 0) F940 (ebx);						// Kill
+	}
+	b[D9046] &= 0xfe;
+	F688 ();
+}
+
+int F681 (PhysObj *p1)
+{
+	if ([p1+0x82] == 0x9a)
+	{
+		b[p1+0xff] = b[p1+0xf8];	// set AI mode
+		[p1+0x82] = w[p1+0xe6];		// reset model
+		F48 (0x17, 0x0, b[p1+0x86]);
+	}
+	return F682 (ebx);
+}
+
+int F682 (PhysObj *p1)
+{
+	rv = F901 (p1, D9115, &s2, &s3, &s4, &s1, &s5);
+	if (rv < 0) return 1;
+	[p1+0xf6] = s5;		// maxrange
+	[p1+0xfa] = s1;		// jumptime
+	F684 (p1);
+	w[p1+0xf8] = b[p1+0xff];	// Store AI mode
+	b[p1+0xff] = 0x11;			// Static? HS cloud...
+	b[[D7758]+b[p1+0x86]] = 0x2;
+	F48 (0x17, 0x0, b[p1+0x86]);
+	return 0;
+}
+
+int F683 (PhysObj *p1)
+{
+	if (w[p1+0x9e] >= 0xf) F685 (p1);	// Check if close to player
+	else F684 (p1);
+	F606 (p1, [D9133]);			// Update FOR
+	F606 (p1, [D9133]);
+	b[p1+0xff] = 0x12;			// current
+	w[p1+0xf8] = 0x8;			// after HS
+	w[p1+0x9e] = 0;				// Set to exit cloud
+	if (F700 (&s1) != 0) b[p1+0x100] = b[s1+0x130];		// Get starport
+	else w[p1+0xf8] = 0x10;
+	F48 (0x17, 0x0, b[p1+0x86]);
+	return 0;
+}
+
+// Generate hyperspaced-in position close to player
+
+void F684 (PhysObj *p1)
+{
+	s1.w0 = 0x5000; s1.w1 = 0x15;
+	F702 (p1, &s1);
+	Vec64Add (p1+0x3e, [D8861]+0x3e);
+	b[p1+0x56] = b[[D8861]+0x56];
+	b[p1+0x57] = 0;
+}
+
+// Generates normal hyperspaced-in position
+
+void F685 (PhysObj *p1)
+{
+	s1.w0 = 0x5000; s1.w1 = 0x33;
+	F702 (p1, &s1);
+}
+
+// Event 2, 0x10 function
+
+void F686 ()
+{
+	if (b[D8870] != 0x4) {		// if not in hyperspace
+		b[D9046] |= 0x1;		// indicates periodic update?
+		F688 ();
+	}
+}
+
+// Event 0 function
+
+void F687 (p1)
+{
+	if (p1 & 0xff == 3) {
+		b[D9046] &= 0xfe;
+		F688 ();
+	}	
+}
+
+// Generates pirates etc. on entering a system?
+// also periodically...
+
+void F688 ()
+{
+	F869 ([D8885], &s1, &s2, &s4, &s5, &s6, &s7, &s8, &s3);
+	[D7758] = [D9133];		// Ooh, important
+
+	ebx = F922 (s7);
+	for (; ebx > 0; ebx--) F689 ();
+	ebx = F922 (F35 (0x16));
+	for (; ebx > 0; ebx--) F690 ();		// various traders
+
+	if (!(b[D9046] & 0x1))		// initial entry
+	{
+		esi = 0;
+		if ([D8997] != 0) {
+			ebx = F922 ([D8997] << 2);
+			if (ebx > 0x19) ebx = 0x19;
+			if (ebx == 0) esi = 1;
+			for (; ebx > 0; ebx--) F691 ();		// landed traders
+		}
+		if (esi == 0) {
+			ebx = F922 (s7);
+			for (; ebx > 0; ebx--) F699 ();		// Lynx, LRC
+		}
+	}
+	// J2903
+	ebx = s5;
+	if (!(b[D9046] & 0x1)) ebx <<= 2;
+	ebx = F922 (ebx);
+	for (; ebx > 0; ebx--) F698 ();		// generic pirates
+	ebx = F922 (s5);
+	for (; ebx > 0; ebx--) F692 ();		// null
+}
+
+// F689 and F690 identical except for first param
+// Both appear to generate traders
+
+void F689 ()
+{
+	ebx = F772 (1);		// trader?
+	if (ebx == 0) return;
+
+	s1.w0 = 0x5000; s1.w1 = 0x33;
+	F702 (ebx, s1);
+	b[ebx+0xff] = 0x11;
+	w[ebx+0xf8] = 0x8;
+	if (!F700 (&s2)) { F940 (ebx); return; }	// Kill if no starport
+
+	b[ebx+0x100] = b[ebx+0x130];
+	F1530 ();
+	[ebx+0xa8] = [D8818] << 2;
+	[ebx+0xac] = [D8818] >> 0x1e;
+	if ((b[D8806] & 0x80) && (b[ebx+0xab] & 0x80)) [ebx+0xac]++;
+	[ebx+0xa8] += [D8804];
+	[ebx+0xac] += [D8807];
+
+	if (!F775 (ebx)) { F940 (ebx); return; }
+	b[[D7758]+b[ebx+0x86]] = 2;
+	F48 (0x17, 0x0, b[ebx+0x86]);
+}
+
+void F690 ()
+{
+	ebx = F772 (0x11);
+	if (ebx == 0) return;
+
+	s1.w0 = 0x5000; s1.w1 = 0x33;
+	F702 (ebx, s1);
+	b[ebx+0xff] = 0x11;
+	w[ebx+0xf8] = 0x8;
+	if (!F700 (&s2)) { F940 (ebx); return; }
+
+	b[ebx+0x100] = b[ebx+0x130];
+	F1530 ();
+	[ebx+0xa8] = [D8818] << 2;
+	[ebx+0xac] = [D8818] >> 0x1e;
+	if ((b[D8806] & 0x80) && (b[ebx+0xab] & 0x80)) [ebx+0xac]++;
+	[ebx+0xa8] += [D8804];
+	[ebx+0xac] += [D8807];
+
+	if (!F775 (ebx)) { F940 (ebx); return; }
+	b[[D7758]+b[ebx+0x86]] = 2;
+	F48 (0x17, 0x0, b[ebx+0x86]);
+}
+
+// Generate landed/docked traders
+
+void F691 ()
+{
+	edi = F772 (1);
+	if (edi == 0) return;
+
+	esi = F700 (&s3);
+	if (esi == 0) { F940 (edi); return; }
+
+	if (b[esi+0x14c] & 0x20) {
+		memcpy (edi+0x3e, esi+0x3e, 6*4);
+		memcpy (edi, esi, 9*4);
+		b[edi+0x56] = b[esi+0x56];
+		b[edi+0x57] = 1;
+	}
+	else {
+		b[edi+0x56] = b[esi+0x86];
+		b[edi+0x57] = 1;
+	}
+	if (F650 (esi, b[edi+0x86], &s9, &s1, &s2)) { F940 (edi); return; }
+
+	// J2920
+	Vec64Add (edi+0x3e, &s9);
+	b[edi+0xff] = 0x24;
+	b[edi+0x100] = 0;
+	b[edi+0xfe] = b[edi+0x86];
+
+	F1530 ();
+	[ebx+0xa8] = [D8818] << 2;
+	[ebx+0xac] = [D8818] >> 0x1e;
+	if ((b[D8806] & 0x80) && (b[ebx+0xab] & 0x80)) [ebx+0xac]++;
+	[ebx+0xa8] += [D8804];
+	[ebx+0xac] += [D8807];
+
+	F671 (edi);
+	if (b[esi+0x14c] & 0x40) b[[D7758]+b[edi+0x86]] = 0x4e;
+	else b[[D7758]+b[edi+0x86]] = 0x2;
+	F48 (0x17, 0x0, b[edi+0x86]);
+}
+
+// Null function
+
+void F692 ()
+{
+}
+
+
+
+
+// F693-F696 are pirate (group) generation funcs
+
+void F693 ()
+{
+}
+
+// Single ship, high bounty
+
+void F694 (p1)
+{
+	ebx = F772 (0xa);
+	if (ebx == 0) return;
+
+	b[ebx+0xfe] = p1;
+	s1.w0 = 0x5000; s1.w1 = 0x33;
+	F702 (ebx, s1);
+	b[ebx+0xff] = 0x5;
+	F697 (ebx, 4);
+	F48 (0x17, 0x0, b[ebx+0x86]);
+}
+
+// Up to four identical ships in a group, small bounty for leader
+
+void F695 (p1)
+{
+	Vec64Copy (&s7, D6270);		// group spacing
+	edi = F772 (0xb);
+	if (edi == 0) return;
+
+	b[edi+0xfe] = p1;
+	s1.w0 = 0x5000; s1.w1 = 0x33;
+	F702 (edi, s1);
+	b[edi+0xff] = 5;
+	F697 (edi, 2);
+	F48 (0x17, 0x0, b[edi+0x86]);
+
+	esi = edi;
+	edi = F771 (esi, 0xb, [esi+0x82]);
+	if (edi == 0) return;
+
+	b[edi+0xff] = 0xb;
+	b[edi+0xfe] = b[esi+0x86];
+	b[edi+0x100] = p1;
+	b[edi+0x101]++;			// retro power related. Abtraction of catchup...
+	w[edi+0x102] = 0x1f4;	// group position offset
+	w[edi+0x106] = 0xfe0c;
+	w[edi+0x104] = 0x0;
+	Vec64Add (edi+0x3e, &s7);
+	F697 (edi, 0);
+	F48 (0x17, 0x0, b[edi+0x86]);
+
+	if (F1530 () & 0x40) return;
+	edi = F771 (esi, 0xb, [esi+0x82]);
+	if (edi == 0) return;
+
+	b[edi+0xff] = 0xb;
+	b[edi+0xfe] = b[esi+0x86];
+	b[edi+0x100] = p1;
+	b[edi+0x101]++;
+	w[edi+0x102] = 0xfe0c;
+	w[edi+0x106] = 0xfe0c;
+	w[edi+0x104] = 0x0;
+	Vec64Sub (edi+0x3e, &s7);
+	Vec64Sub (edi+0x3e, &s7);
+	F697 (edi, 0);
+	F48 (0x17, 0x0, b[edi+0x86]);
+
+	if (F1530 () & 0x40) return;
+	edi = F771 (esi, 0xb, [esi+0x82]);
+	if (edi == 0) return;
+
+	b[edi+0xff] = 0xb;
+	b[edi+0xfe] = b[esi+0x86];
+	b[edi+0x100] = p1;
+	b[edi+0x101]++;
+	w[edi+0x102] = 0x0;
+	w[edi+0x106] = 0xfc18;
+	w[edi+0x104] = 0x0;
+	Vec64Sub (edi+0x3e, &s7);
+	Vec64Sub (edi+0x3e, &s7);
+	Vec64Sub (edi+0x3e, &s7);
+	F697 (edi, 0);
+	F48 (0x17, 0x0, b[edi+0x86]);
+}
+
+// Up to four random ships in a group, larger leader
+
+void F696 (p1)
+{
+	Vec64Copy (&s8, D6271);		// group spacing (2)
+	ebx = F772 (0xa);
+	if (ebx == 0) return;
+
+	b[edi+0xfe] = p1;
+	s2.w0 = 0x5000; s2.w1 = 0x33;
+	F702 (ebx, s2);
+	b[ebx+0xff] = 5;
+	F697 (ebx, 4);
+	F48 (0x17, 0x0, b[ebx+0x86]);
+
+	esi = ebx;
+	edi = F658 (0xb, &s1.s1);		// call table lookup func directly
+	ebx = F773 (esi, 0xb, edi);
+	if (ebx == 0) return;
+
+	b[ebx+0xff] = 0xb;
+	b[ebx+0xfe] = b[esi+0x86];
+	b[ebx+0x100] = p1;
+	b[edi+0x101]++;
+	w[edi+0x102] = 0x1f4;
+	w[edi+0x106] = 0xfe0c;
+	w[edi+0x104] = 0x0;
+	Vec64Add (ebx+0x3e, &s8);
+	F697 (ebx, 0);
+	F48 (0x17, 0x0, b[edi+0x86]);
+
+	if (F1530 () & 0x40) return;
+	edi = F658 (0xb, &s1.s1);
+	ebx = F773 (esi, 0xb, edi);
+	if (ebx == 0) return;
+
+	b[ebx+0xff] = 0xb;
+	b[ebx+0xfe] = b[esi+0x86];
+	b[ebx+0x100] = p1;
+	b[edi+0x101]++;
+	w[edi+0x102] = 0xfe0c;
+	w[edi+0x106] = 0xfe0c;
+	w[edi+0x104] = 0x0;
+	Vec64Sub (ebx+0x3e, &s8);
+	Vec64Sub (ebx+0x3e, &s8);
+	F697 (ebx, 0);
+	F48 (0x17, 0x0, b[edi+0x86]);
+
+	if (F1530 () & 0x40) return;
+	edi = F658 (0xb, &s1.s1);
+	ebx = F773 (esi, 0xb, edi);
+	if (ebx == 0) return;
+
+	b[ebx+0xff] = 0xb;
+	b[ebx+0xfe] = b[esi+0x86];
+	b[ebx+0x100] = p1;
+	b[edi+0x101]++;
+	w[edi+0x102] = 0x0;
+	w[edi+0x106] = 0xfc18;
+	w[edi+0x104] = 0x0;
+	Vec64Sub (ebx+0x3e, &s8);
+	Vec64Sub (ebx+0x3e, &s8);
+	Vec64Sub (ebx+0x3e, &s8);
+	F697 (ebx, 0);
+	F48 (0x17, 0x0, b[edi+0x86]);
+}
+
+// Setup pirate?
+// second param alters bounty
+
+void F697 (PhysObj *p1, int p2)
+{
+	[p1+0x11a] = [D6268 + ((F1530()&0xf)+p2)*4];	// bounty
+	b[p1+0x118] = 0xfb;							// pirate code
+}
+
+// Top-level pirate generation function
+
+void F698 ()
+{
+	switch F922 (4)
+	{
+		case 0: F694 (b[D8857]); break;		// single ship
+		case 1: F695 (b[D8857]); break;		// group identical
+		case 2: F696 (b[D8857]); break;		// group random
+		case 3: F693 (b[D8857]); break;		// nothing
+	}
+}
+
+// Generates objects close to stations (Lynx, LRC)
+
+void F699 ()
+{
+	if (!F701 (&s2)) return;
+	ebx = F772 (0xf);
+	if (ebx == 0) return;
+
+	b[ebx+0x101] = 0xff;
+	s1.w0 = 0x5000; s2.w0 = 0x18;
+	F702 (ebx, s1);
+	b[ebx+0xff] = 0xd;
+	b[ebx+0x56] = b[s2+0x130];
+	F48 (0x17, 0x0, b[ebx+0x86]);
+}
+
+// Selects random starport/station pointer
+
+int F700 (PhysObj **p1)
+{
+	if ([D8997] == 0) return 0;
+	[p1] = D8999 + 0x322*F922 ([D8997]);	// starport pointer
+	return F1532 (b[[p1]+0x130], [D9133]);
+}
+
+// Selects random station pointer
+
+int F701 (Starport **p1)
+{
+	if ([D9011] == 0 || [D8997] == 0) return 0;
+
+	edx = F922 ([D9011]);
+	for (eax=0; eax < [D8997]; eax++) {
+		if (!(b[D8999 + eax*0x332 + 0x131] & 0x10)) continue;
+		if (edx-- <= 0) break;
+	}
+	if (edx < 0) return 0;
+
+	if (!(b[D8999 + eax*0x332 + 0x131] & 0x10)) return 0;
+	[p1] = D8999 + eax*0x332;
+	return 1;
+}
+
+// Generates hyperspaced-in type position
+
+void F702 (PhysObj *p1, p2)
+{
+	F1530 ();
+	F1507 (p1, p2, [D8818], [D8820]);	// Calc "planet position"
+	w[p1+0xb4] = 0;
+	w[p1+0xb6] = 0;
+	w[p1+0xb8] = 0;
+}
+
+// Name generator function?
+// p2 type-related byte
+
+void F703 (PhysObj *p1, int p2, p3)
+{
+	F1530 ();
+	[p1+0xa0] = [D8818];
+	F791 (p2, p3, [D8818], p1+0x124);
+}
+
+// Worker for event 5
+
+void F704 (PhysObj *p1, uint p2, uint p3)
+{
+	ecx = p3 - [p1+0xac];
+	if (p2 < [p1+0xa8]) ecx--;
+	esi = p2 - [p1+0xa8];
+	[p1+0xa8] = p2; [p1+0xac] = p3;
+
+	edx = [b[p1+0xff]*16 + D6256];
+	if (edx != 0) edx (p1, esi, ecx);
+}
+
+// Event 5 function
+
+void F705 (E5Struct *p1)
+{
+	F704 ([p1+0x8], [p1], [p1+0x4];
+}
+
+// Funcs in E5 table (D6256):
+
+F708
+F709
+F710
+F711
+F712
+F713
+F714
+F715
+F716
+F717
+F723
+F724
+F725
+F727
+F729
+
+void F706 (PhysObj *p1, p2)
+{
+	[D9045] = p2;
+	eax = [b[p1+0xff]*16 + D6255];
+	if (eax != 0) eax (p1);
+}
+
+// Event 6 function
+
+void F707 (E6Struct *p1)
+{
+	F706 ([p1], [p1+4];
+}
+
+// Funcs in E6 table (D6255):
+
+F732
+F733
+F734
+F735
+F736
+F737
+F740
+F741
+F742
+F743
+F746
+F747
+F748
+F749
+F750
+F751
+F752
+F755
+F757
+F758
+F759
+F760
+F763
+F764
+F765
+F766
+F767
+F768
+F769
+F770
+
+// AI 0x1c, event 5
+// dies after time a4, produces some smoke
+// Chaff?
+
+void F708 (PhysObj *p1, uint tics, uint days)
+{
+	edx = [D9155] << 0xe >> 0x10;
+	eax = (edx > [p1+0xa4] & 0xffff);
+	[ebx+0xa4] -= edx;
+	if (eax != 0) { F940 (); return; }
+	eax = [ebx+0xa4] & 0xffff;
+	if (eax < 0xc800 && eax >= 0xbc00) F939 (p1, p1+0x3e);
+	F1512 (p1, p3, p2);
+}
+
+// AI 0x1a, event 5
+// dies after time a4. Explosion?
+
+void F709 (PhysObj *p1, uint tics, uint days)
+{
+	esi = [D9155] << 0xf >> 0x10;
+	edi = [p1+0xa4] & 0xffff;
+	F1512 (p1, p3, p2);
+	[p1+0xa4] -= esi;
+	if (esi > edi || b[p1+0x88] > 0xd) F940 (p1);
+}
+
+// AI 0x18, event 5
+
+void F710 (PhysObj *p1, uint tics, uint days)
+{
+	// Null function
+}
+
+// AI 0x19, event 5
+// Constant random spin rate, nothing else
+
+void F711 (PhysObj *p1, uint tics, uint days)
+{
+	edx = [p1+0xa0] & 0xff;
+	ebx = [p1+0xa0] >> 0x10;
+	esi = ([D8804] << ((ebx&7)+6) >> 0x10) + edx;
+	edx = ([D8804] << ((edx&7)+6) >> 0x10) + ebx;
+	MatBuildYZT (p1, edx, esi);
+}
+
+// AI 0x15, event 5
+// Metal alloys?
+
+void F712 (PhysObj *p1, uint tics, uint days)
+{
+	F939 (p1, p1+0x3e, 4);
+	F713 (p1, p2, p3);
+}
+
+// AI 0x16, event 5
+// Normal cargo?
+
+void F713 (PhysObj *p1, uint tics, uint days)
+{
+	F1512 (p1, p3, p2);
+	F603 (p1, [D9133], [D9155]);
+	F714 (p1, p2, p3);
+}
+
+// AI 0x17, event 5 - cargo - includes scooping
+// No movement...
+
+void F714 (PhysObj *p1, uint tics, uint days)
+{
+	if (b[D8870] == 0x2c) return;
+	if (b[[D8861]+0xc9] & 4)
+	{
+		if (b[[D8861]+0x56] != b[p1+0x56]) return;
+		if (b[[D8861]+0x57] != b[p1+0x57]) return;
+		Vec64Copy (ebp-0x24, p1+0x3e);
+		Vec64Sub (ebp-0x24, [D8861]+0x3e);
+		eax = Vec64Truncate (ebp-0x24);
+		if (eax >= 2) return;
+		Vec64to32 (ebp-0x30, ebp-0x24);
+		F1519 (ebp-0x30, ebp-0x30);
+		edi = F1521 ([[D8861]+0x18], [ebp-0x30]);
+		edi += F1521 ([[D8861]+0x1c], [ebp-0x2c]);
+		edi += F1521 ([[D8861]+0x20], [ebp-0x28]);
+		if (edi < 0x3fffffff) return;
+	}	
+	else {
+		F569 (p1, [D9133], &s1.b2, &s1.b3, &s3, &s2, &s1.b1);
+		if (!(s2.b2 & 0x10)) return;
+		if (s1.b3 != [D8857]) { F940 (p1); return; }
+	}
+	if ([D8891] >= [D8889]) return;		// no space
+	if ([p1+0x82] == 0x99 || [p1+0x82] == 0x6a)
+	{
+		[ebp-0x60] = 0x9905;
+		[ebp-0x48] = -1;
+		[ebp-0x44] = p1;
+		[ebp-0x5c] = w[p1+0x9e] + 0x8e00;		// cargo strings
+		F349 (ebp-0x60);
+		SoundPlaySample (0x11);
+		[D8891] ++;						// increment used cargo space
+		w[D8896+w[p1+0x9e]*2] ++;		// add to cargo	
+		F148 (0x16, w[p1+0x9e]);
+		F940 (p1);
+		return;
+	}
+	eax = F1538 ([[D8861]+0x82]);
+	eax = w[[eax+0x38]+0x12];
+	while (--eax >= 0)
+	{
+		if (b[[D8861]+eax+0xd6] != 0) continue;
+		if ([p1+0x82] == 0xc) b[[D8861]+eax+0xd6] = 0x88;
+		else b[[D8861]+eax+0xd6] = 0xc0;
+		[D8889]--;
+		F940 (p1);
+	} 	
+}
+
+// AI 0x1b, event 5
+
+void F715 (PhysObj *p1, uint tics, uint days)
+{
+	// Null function
+}
+
+// AI 0x14, event 5 - mine function
+
+void F716 (PhysObj *p1, uint tics, uint days)
+{
+	F603 (p1, [D9133], [D9155]);
+	F718 (p1, p2, p3);
+}
+
+// AI 0x13, event 5 - missile function
+
+void F717 (PhysObj *p1, uint tics, uint days)
+{
+	b[p1+0x8b] = 0;					// maximal update frequency
+	F603 (p1, [D9133], [D9155]);	// update accel, inc. gravity
+	F601 (p1, p2);					// update velocity
+	F585 (p1, p2, 1,  p2);			// update orientation... and stuff
+	F718 (p1, p2, p3);
+}
+
+void F718 (PhysObj *p1, uint tics, uint days)
+{
+	F1512 (p1, p3, p2);				// updates position
+	if (w[p1+0x9e] != 0 && [p1+0x82] > 5)
+	{
+		Vec64Copy (ebp-0x24, p1+0x3e, 6*4);
+		[ebp-0x24] -= [p1+0x8c];
+		[ebp-0x1c] -= [p1+0x90];
+		[ebp-0x14] -= [p1+0x94];
+ 		F939 (p1, ebp-0x24);		// smoke!
+	}
+	F569 ([D9133], &s1.b2, &s1.b3, &s3, &s2, &s1.b1);	// collision
+	if (s1.b2 & 0x80) {
+		F721 (p1, s3);
+		return;
+	}
+	if (!([D8835] & 4)) return;			// no ECM
+	switch ([p1+0x82])
+	{
+		case 0x7, 0x9, 0xa: if (!(b[D8835] & 4)) break;
+		case 0x4, 0x8, 0xb, 0xc, 0xd: F719 (p1);
+	}
+}
+
+// Generates explosion and kills missile
+
+void F719 (PhysObj *missile)
+{
+	ebx = F928 ([D9133], p1, 0x9, 0x9b, &s1);
+	if (ebx == 0) return;
+	b[p1+0x87] = 0xb;
+	b[p1+0xff] = 0x1c;
+	[ebx+0xa4] = -1;
+	w[ebx+0x9e] = -1;
+	eax = F1530 ();
+	MatBuildYZT (ebx, eax & 0xffff, eax >> 0x10);
+	SoundPlaySampleLogVol (6, b[p1+0x88]);
+	F925 (p1);
+}
+
+// Missile damage function
+
+void F720 (PhysObj *missile, PhysObj *target)
+{
+	esi = [[p1+0x82]*4 + D6269];
+	eax = F953 (p2, esi, b[p1+0x100]);		// Damage
+	if (eax != 0) F719 (p1);				// destroy missile
+	else {
+		SoundPlaySampleLogVol (6, b[p1+0x88]);
+		F925 (p1);							// destroy object...
+	}
+}
+
+// Missile hit function
+
+void F721 (PhysObj *missile, PhysObj *target)
+{
+	if (b[p2+0x86] == b[p1+0x100] && w[p1+0x9e] <= 2) return;
+	if ([p1+0x82] == 0xd) if (F722 (p1, p2) > 0) return;
+	F720 (p1, p2);
+}
+
+// Nuke function
+
+int F722 (PhysObj *missile, PhysObj *target)
+{
+	for (edx=[D9084];;)
+	{
+		if (--edx < 0) return 0;
+		ebx = edx*0x34 + D9085;
+		eax = b[ebx+0x4] & 0xf;
+		if (eax != 5 && eax != 6) continue;
+		if ([ebx+0x6] != [D8885]) continue;
+		if (b[ebx+0x1a] == 0) continue;
+		if (b[ebx+0x1a] == b[p1+0xfe]) break;
+	}
+	if (b[ebx+0x1a] != b[p2+0x86]) {
+		eax = F1532 (b[ebx+0x1a], [D9133]);
+		if (b[eax+0x56] != b[p2+0x86]) return 0;
+	}
+	F719 (p1);
+	[p2+0x7e] = 0xa;
+	b[ebx+0x5] = 0xff;
+	eax = F1532 (b[ebx+0x1a], [D9133]);
+	[eax+0x82] = 0xa2;
+	[eax+0x7e] = 6;
+	b[[D7758]+b[eax+0x86] = 8;
+	if (b[p2+0x88] <= 0x10) F953 ([D8861], 0xc8, 0);
+	return 1;
+}
+
+// AI 0x20, event 5
+
+void F723 (PhysObj *p1, uint tics, uint days)
+{
+	esi = F1532 (b[p1+0xfe], [D9133]);
+	if (b[p1+0x14c] != 0x40) return;			// wrong?
+	F589 (p1, esi, -1);
+	F591 (p1, esi, &s6);
+	[p1+0x8c] = (s6>>7) | ((s5&0x7f)<<0x19);
+	[p1+0x90] = (s4>>7) | ((s3&0x7f)<<0x19);
+	[p1+0x94] = (s2>>7) | ((s1&0x7f)<<0x19);
+	F1512 (p1, p3, p2);
+}
+
+// AI 0x2, event 5
+// head towards player, fire laser
+
+void F724 (PhysObj *p1, uint tics, uint days)
+{
+	F725 (p1, p2, p3);
+	F931 (p1, 0);			// fire laser
+}
+
+// AI 0x1, 0x3, 0x6, 0xc, event 5
+// Basic combat AI func
+// no thrust, reqd roll.
+
+void F725 (PhysObj *p1, uint tics, uint days)
+{
+	b[p1+0x8b] = 0;
+	F603 (p1, [D9133], [D9155]);							// gravity
+	F585 (p1, p2, 1, p2);									// orientation
+	F601 (p1, p2);											// velocity
+; Needs fix for missile-assassinations
+	F726 (p1+0x8c, D8839, p2, 0xd);							// fudge
+	F1512 (p1, p3, p2);										// update pos
+	F730 (p1, p2, p3);										// animation, pulse
+	if (b[p1+0x14e] != 0) F939 (p1, p1+0x3e, 0);			// smoke
+	F569 (p1, [D9133], &s1.b2, &s2.b3, &s1, &s3, &s2.b1);	// collision
+}
+
+// Used by player code
+// Modify p1 by (p1 - p2) * (p3 << p4)
+
+F726 (Vec32 *p1, Vec32 *p2, uint tics, int p4)
+{
+	if (p3 >= 0xc22e || p3 <= 0) return;
+
+	if (abs ([p1+0x0] - [p2+0x0]) > 0x64) 
+		[p1+0x0] -= F1521 ([p1+0x0] - [p2+0x0], p3 << p4);
+	if (abs ([p1+0x4] - [p2+0x4]) > 0x64) 
+		[p1+0x4] -= F1521 ([p1+0x4] - [p2+0x4], p3 << p4);
+	if (abs ([p1+0x8] - [p2+0x8]) > 0x64) 
+		[p1+0x8] -= F1521 ([p1+0x8] - [p2+0x8], p3 << p4);
+}
+
+// AI 0x0, 0x4, 0x5, 0x7, 0x8, 0x9, 0xa, 0x1f, 0x23, event 5
+// All navigation types?
+
+void F727 (PhysObj *p1, uint tics, uint days)
+{
+	b[p1+0x8b] = 0;		// each-frame update
+	F603 (p1, [D9133], [D9155]);					// gravity
+	F601 (p1, p2);									// orientation
+	F585 (p1, p2, 1, p2);							// velocity
+	F1512 (p1, p3, p2);								// position
+	F730 (p1, p2, p3);								// animation
+	if (b[p1+0x14e] != 0) F939 (p1, p1+0x3e);		// smoke
+
+	if (b[p1+0xff] != 7)
+		F569 ([D9133], &s2.b2, &s2.b3, &s1, &s3, &s2.b1);
+	if (s2.b2 == 0 || b[p1+0xff] != 0x23) return;
+	if (!(s2.b2 & 0x40) || !(s2.b2 & 0x20)) return;		// not landed
+
+	eax = F652 (b[p1+0x86], s1);		// Currently docking
+	if (eax != 0) {
+		b[p1+0xff] = 0x20;				// docked
+		F48 (0x17, 0, b[p1+0x86]);
+	}
+	else F745 (p1, s1);					// request permission
+}
+
+// Formation maintenance?
+
+void F728 (PhysObj *p1)
+{
+	eax = F1532 (b[p1+0xfe], [D9133]);
+	b[p1+0x8b] = 0;
+	b[p1+0x56] = b[eax+0x56];
+	b[p1+0x57] = b[eax+0x57];
+	memcpy (p1, eax, 9*4);
+	[p1+0x8c] = [eax+0x8c];
+	[p1+0x90] = [eax+0x90];
+	[p1+0x94] = [eax+0x94];
+	F593 (p1, eax, &s6);		// Relative position +0x102
+	Vec64Add (p1+0x3e, &s6);
+	b[p1+0x25] = 0;
+	b[p1+0x58] = 0;
+}
+
+// AI 0xb, event 5 - formation?
+
+void F729 (PhysObj *p1, uint tics, uint days)
+{
+	F728 (p1);
+	F730 (p1, p2, p3);
+	if (b[p1+0x14e] != 0) F939 (p1, p1+0x3e);
+	F569 (p1, [D9133], &s2.b2, &s2.b1, &s1, &s3, &s2.b1);
+}
+
+// 0x9e update - animation, pulse timeout
+
+void F730 (PhysObj *p1)
+{
+	ecx = [D9155] >> 0x10;
+	edx = [D9155] & 0xffff;
+	if (w[p1+0xe8] != 0) {		// pulse timeout
+		if (ecx > 0 && edx < w[p1+0xe8]) w[p1+0xe8] -= edx;		// BUG!
+		else w[p1+0xe8] = 0;
+	}
+	if (b[p1+0xff] < 0x1e)
+	{
+		if (w[p1+0x9e] == 0) return;
+		if (w[p1+0x9e] < [D9155]>>1) w[p1+0x9e] = 0;
+		else w[p1+0x9e] -= [D9155] >> 1;
+	}
+	else {
+		if (b[p1+0xff] <= 0xc || w[p1+0x9e] == 0xffff) return;
+		if (0xffff - w[p1+0x9e] < [D9155]>>1) w[p1+0x9e] = 0xffff;
+		else w[p1+0x9e] += [D9155] >> 1;
+	}
+}
+
+// Something to do with assassination targets
+// Used when something dies...
+
+void F731 (PhysObj *p1, p2, p3, int objindex)
+{
+	if (b[p1+0x118] != 0x10) return;	// assass. target
+	if (p4 != [D8857]) return;
+	eax = [D8804+0x4ef0] - 1;		// mission roster entries
+	while --eax >= 0)
+	{
+		ebx = [D8804+0x4ef4+eax*68];		// mission roster
+		if (ebx != [p1+0xa0]) continue;
+		b[D8804+0x4ef9+eax*68] = b[p1+0x11a];
+		return;
+	}
+}
+
+// Event 6, AI 0x17
+// General E6 update function - cooling, fuel, FOR 
+
+void F732 (PhysObj *p1)
+{
+	F938 (p1, [D9045]);			// general equipment update
+	b[p1+0x14d] -= [D9045];
+	if (b[p1+0x14d] >= 0) return;
+	F606 (p1, [D9133]);			// FOR update, with timeout
+	b[p1+0x14d] = 0x13;
+}
+
+// Event 6, AI 0x24 - landed/docked?
+
+void F733 (PhysObj *p1)
+{
+	s1 = [p1+0xa8];
+	s2 = [p1+0xac];
+	eax = F739 (&s2, &s1, D8807, D8804);
+	if (eax == 0) return;
+	[p1+0xa8] = [D8804];
+	[p1+0xac] = [D8807];
+	if (b[p1+0x118] == 0x10) b[p1+0x100] = 0;
+	b[p1+0xff] = 0x1f;
+	F48 (0x17, 0, b[p1+0x86]);
+	F734 (p1);
+}
+
+// Event 6, AI 0x1f - request launch?
+
+void F734 (PhysObj *p1)
+{
+	esi = F1532 (n[p1+0xfe], [D9133]);
+	eax = F654 (b[p1+0x86], esi);			// launch request
+	if (eax == 0) return;
+	b[[D7758]+b[p1+0x86]] = 0x4f;
+	b[p1+0x57] = 1;
+	b[p1+0xff] = 0x21;
+	F48 (0x17, 0, b[p1+0x86]);
+}	
+
+// Event 6, AI 0x21 - launching?
+
+void F735 (PhysObj *p1)
+{
+	esi = F1532 (b[p1+0xfe], [D9133]);
+	if (b[esi+0xc9] != 0xfe && b[esi+0xc9] != 0) return;
+	b[p1+0xff] = 7;
+	if (b[p1+0x14c] & 0x20)			// starport
+	{
+		s1 = F1530 () & 0xffff;
+		s3 = 0x1398; s2 = 0x3a98;
+		VecMatMul (&s3, &s3, esi);
+		w[p1+0x102] = s3;			// set navigation pos
+		w[p1+0x104] = s2;
+		w[p1+0x106] = s1;
+	}
+	else {							// station
+		w[p1+0x106] = (F1530 () & 0x1ff) + 0x1388;
+		w[p1+0x104] = w[p1+0x102] = 0;
+	}
+	[p1+0x8c] = [p1+0x90] = [p1+0x94] = 0;
+	F736 (p1);						// fly, be free...
+}
+
+// Event 6, AI 0x7 - fly away from starport/station
+// Variant on standard navigation - different thrust/roll
+
+void F736 (PhysObj *p1)
+{
+	F732 (p1);								// equipment update
+	esi = F1532 (b[p1+0xfe], [D9133]);
+	F610 (p1, esi, b[p1+0x101], &s1, &s4, [D9133]);		// Nav
+	if (s1 > 6)
+	{
+		F600 (p1, &s4, &s7);		// thrusters
+		F586 (p1);					// roll, odd...
+		return;
+	}
+	// Reached target...
+	F651 (b[p1+0x86], esi);				// clear traffic control
+	if (b[p1+0x100] == 0) F761 (p1);
+	else if (b[p1+0x100] != b[p1+0xfe] F741 (p1);	// fly to new target
+	else F745 (p1, esi);							// Docking req.
+}
+
+// Event 6, AI 0x11
+// Wait until object time, then enter HS & switch to 0x12
+
+void F737 (PhysObj *p1)
+{
+	if ([D8807] < [p1+0xac]) return;
+	if ([D8807] == [p1+0xac] && [D8804] < [p1+0xa8]) return;
+	b[p1+0xff] = 0x12;
+	w[p1+0x9e] = 0;
+	F48 (0x17, 0, b[p1+0x86]);
+	F738 (p1);
+}
+
+// Hyperspace entry function
+
+void F738 (PhysObj *p1)
+{
+	w[p1+0xb6] = w[p1+0xb8] = w[p1+0xba] = 0;	// thrust
+	w[p1+0xe6] = w[p1+0x82];
+	w[p1+0x82] = 0x9a;							// HS cloud
+	b[[D7758]+b[p1+0x86]] = 0xa;
+	[p1+0x7e] = 8;
+	ecx = [p1+0xfa] << 0x10;
+	edx = [p1+0xfa] >> 0x10;
+	if (ecx & 0x80000000 && b[p1+0xab] & 0x80) [p1+0xac]++;		// BUG!
+	[p1+0xa8] += ecx;
+	[p1+0xac] += edx;
+}
+
+// returns 1 if first time < second time
+// modifies first time to first - second
+
+int F739 (int *edays, int *etics, int *cdays, int *ctics)
+{
+	edx = [p2] < [p4];
+	[p2] -= [p4];
+	if (([p1] == 0 && edx != 0) || [p1]-edx < [p3]) {		// Surely wrong...
+		[p1] = [p1] - [p3] - edx;
+		return 1;
+	}
+	else {
+		[p1] = [p1] - [p3] - edx;
+		return 0;
+	}
+}
+
+// Event 6, AI 0x12 - Hyperspace - check for exit
+// Creates remnant, animates.
+
+void F740 (PhysObj *p1)
+{
+	s1 = [D8804]; s2 = [D8807];
+	eax = F739 (&s2, &s1, p1+0xac, p1+0xa8);		// freaky...
+	if (eax != 0) {			// curtime < 
+		[p1+0xa4] = (s1>>3) | (s2<<0x1d);		// anim. for HS cloud?
+		return;
+	}
+	esi = F928 ([D9133], p1, 0xa, 0, &s3);		// copy object
+	if (esi != 0) {
+		b[esi+0xff] = 0x1e;
+		b[esi+0x118] = 0xfe;
+		[esi+0xa8] = 0xff9e8e;
+		[esi+0xac] = 0;
+		w[esi+0x9e] = 1;		// remnant?
+	}
+	b[[D7758]+b[p1+0x86]] = 0x4f;
+	[p1+0xf2] = 0;
+	[p1+0x7e] = 0;
+	[p1+0x82] = w[p1+0xe6];
+	b[p1+0xff] = b[p1+0xf8];
+	[p1+0x8c] = [p1+0x90] = 0;
+	[p1+0x94] = 0x71b7;
+	[p1+0xf2] = [p1+0xf6] = [p1+0xfa] = 0;
+	F48 (0x17, 1, b[p1+0x86]);
+}
+
+// Event 6, AI 0x8 - exit from hyperspace
+// Sets target, offset, switches to mode 0x0
+
+void F741 (PhysObj *p1)
+{
+	b[p1+0xfe] = b[p1+0x100];
+	esi = F1532 (b[p1+0xfe], [D9133]);
+	b[p1+0xff] = 0;
+	F48 (0x17, 0, b[p1+0x86]);
+	if (b[esi+0x14c] & 0x10)
+	{
+		if (b[esi+0x14c] & 0x20) {		// starport
+			s3 = 0; s2 = 0x1770; s1 = 0;
+			VecMatMul (&s3, &s3, esi);
+		}
+		else {
+			s3 = 0; s2 = 0; s1 = 0xfa0;
+		}
+		w[p1+0x102] = s3;
+		w[p1+0x104] = s2;
+		w[p1+0x106] = s1;
+	}
+	else {
+		w[p1+0x102] = w[p1+0x104] = w[p1+0x106] = 0;
+	}
+	F742 (p1);
+}
+
+// Event 6, AI 0x0
+// Basic nav function?
+
+void F742 (PhysObj *p1)
+{
+	F732 (p1);
+	esi = F1532 (b[p1+0xfe], [D9133]);
+	F610 (p1, esi, b[p1+0x101], &s1, &s4, [D9133]);
+	if (s1 > 6)
+	{
+		F599 (p1, &s4, &s7);
+		F587 (p1);
+		return;
+	}
+	if (b[p1+0x100] == 0) F761 (p1);
+	else if (b[p1+0x100] != b[p1+0xfe]) F741 (p1);	// fly to new target
+	else F745 (p1, esi);							// dock
+}
+
+// Event 6, AI 0xa
+// Patrol mode?
+
+void F743 (PhysObj *p1)
+{
+	F732 (p1);
+	edi = F1532 (b[p1+0xfe], [D9133]);
+	eax = F1538 ([esi+0x82]);
+	esi = [eax+0x14] + [eax+0x18] - 0xc;
+	if (esi > 0) esi = 0;
+	if (esi < -15) esi = -15;
+	edx = abs (w[p1+0x102]) + abs (w[p1+0x104]) + abs (w[p1+0x106]);
+	if (edx < 0x2000 >> -esi)
+	{
+		F1505 (&s4, F922(0xffff), F922(0xffff));
+		w[p1+0x102] = s4 >> -esi;
+		w[p1+0x104] = s4 >> -esi;
+		w[p1+0x106] = s4 >> -esi;
+	}
+	F610 (p1, edi, b[p1+0x101]-2, &s1, &s4, [D9133]);
+	if (s1 > 6)
+	{
+		F599 (p1, &s4, &s7);
+		F587 (p1);
+		return;
+	}
+	F1505 (&s4, F922(0xffff), F922(0xffff));
+	w[p1+0x102] = s4 >> -esi;
+	w[p1+0x104] = s4 >> -esi;
+	w[p1+0x106] = s4 >> -esi;
+}
+
+// Pad/bay contact function
+
+void F744 (p1, p2)
+{
+	eax = F652 (b[p1+0x86], p2);	// signal docking completion
+	if (eax != 0) {					// current docking
+		b[p1+0xff] = 0x20;			// landed?
+		F48 (0x17, 0, b[p1+0x86]);
+	}
+	else F745 (p1, p2);				// Docking request
+}
+
+// Docking request & setup function
+
+void F745 (p1, p2)
+{
+	if (!(b[p2+0x14c] & 0x10)) return;
+	eax = F655 (p1, p2, &s7, &s1);			// request permission & pad
+	if (eax != 0) return;
+	w[p1+0x102] = s7 >> 0xa;
+	w[p1+0x104] = s5 >> 0xa;
+	w[p1+0x106] = s3 >> 0xa;				// target offset
+	SoundPlaySampleLogVol (0xc, b[p1+0x88]);
+	b[p1+0xff] = 0x23;						// docking mode
+	F48 (0x17, 0, b[p1+0x86]);
+}
+
+// Event 6, AI 0x23 - docking function
+
+void F746 (PhysObj *p1)
+{
+	F732 (p1);
+	esi = F1532 (b[p1+0xfe], [D9133]);
+	F596 (p1, esi, -2, &s1, &s4, [D9133]);		// fudge...
+	if (s1 <= 0 && [D7706] != 0x3e2)
+	{
+		F744 (p1, esi);			// docking completion
+		if (b[esi+0x14c] & 0x20) memcpy (p1, esi, 9*4);
+		else memcpy (p1, identity, 9*4);
+		F671 (p1);				// offset on pad by radius
+	}
+	F589 (p1, esi, -1);			// equalises orientation
+	F599 (p1, &s4, &s7);		// set thrusters - limited
+}
+
+// Event 6, AI 0x20 - docked, waiting for timeout function
+
+void F747 (PhysObj *p1)
+{
+	esi = F1532 (b[p1+0xfe], [D9133]);
+	if (b[esi+0xc9] == 3) return;		// waiting for traffic control
+
+	F653 (esi);							// clear
+	if (b[esi+0x14c] & 0x40) b[[D7758]+b[p1+0x86]] = 0x4e;
+	else b[[D7758]+b[p1+0x86]] = 2;
+	b[p1+0xff] = 0x24;
+	b[p1+0x100] = 0;
+	F1530 ();
+	[p1+0xa8] = [D8804] + [D8818];
+	[p1+0xac] = [D8807] + 2;
+	if (b[D8806] & 8 && b[D8819] & 8) [p1+0xac]++;
+	F48 (0x17, 0, b[p1+0x86]);
+}
+
+// Event 6, AI 0x22
+
+void F748 (PhysObj *p1)
+{
+	F732 (p1);
+	if (b[[D9092]+0xc9] == -2 || b[[D9092]+0xc9] == 0)
+	{
+		b[p1+0xff] = 1;
+		F48 (0x17, 0, b[p1+0x86]);
+	}
+}
+
+// Event 6, AI 0x5
+
+void F749 (PhysObj *p1)
+{
+	esi = [D8818] & 0xffff;
+	F1530 ();
+	w[p1+0x102] = Sin16 (esi) >> 5;
+	w[p1+0x104] = Sin16 (esi+0x4000) >> 5;
+	w[p1+0x106] = [D8820] >> 0x16;
+	b[p1+0xff] = 4;
+	F48 (0x17, 0, b[p1+0x86]);
+}
+
+// Event 6, AI 0x4 - interception
+
+void F750 (PhysObj *p1)
+{
+	F732 (p1);
+	eax = F1532 (b[p1+0xfe], [D9133]);
+	if (b[eax+0xff] == 0x24) {
+		w[p1+0xb6] = w[p1+0xb8] = w[p1+0xba] = 0;
+		return;
+	}
+	F596 (p1, eax, 1, &s1, &s4, [D9133]);	// get pos/vel, fudge
+	if (s1 >= 10)
+	{
+		F599 (p1, &s4, &s7);		// set thrusters
+		F587 (p1);					// face target
+		return;
+	}
+	b[p1+0xff] = 1;		// enter combat. Woo.	
+
+	for (ebx=0x72; ebx > 0; ebx--)		// sort out escorts?
+	{
+		if (!(b[[D9133]+ebx] & 0x40)) continue;
+		edi = F1532 (p1, [D9133]);
+		if (b[edi+0xff] != 0xb) continue;
+		if (b[edi+0xfe] != b[p1+0x86]) continue;
+		F728 (edi);
+		b[edi+0xff] = 1;
+		b[edi+0xfe] = b[edi+0x100];
+		w[edi+0x102] = w[edi+0x104] = w[edi+0x106] = 0;
+	}
+	if (b[p1+0xfe] == [D8857] && b[D8870] != 4 && SysMenuPlayTime ())		 
+	{
+		[ebp-0x4c] = 0x98c3;
+		[ebp-0x34] = -1;
+		F349 (ebp-0x4c);
+		eax = F1532 (b[[D8861]+0x56], [D9133]);
+		if (b[eax+0x14c] & 0x10 || [D8867] < 0x9c40) {
+			[D8839] = [D8840] = [D8841] = [D8842] = 0;
+		}
+		else {
+			[D8839] = [[D8861]+0x8c];
+			[D8840] = [[D8861]+0x90];
+			[D8841] = [[D8861]+0x94];
+			[D8842] = [D8866];
+		}
+		SoundPlaySample (0x1e);
+		if (b[D9035] & b[D9039) SoundPlaySong (0xe);
+		else SoundStopSong ();
+	}
+	w[p1+0x102] = w[p1+0x104] = w[p1+0x106] = 0;
+	F48 (0x17, 0, b[p1+0x86]);
+	F753 (p1);
+}
+
+
+// Event 6, AI 0xb - formation/escort
+
+void F751 (PhysObj *p1)
+{
+	eax = F1532 (b[p1+0xfe], [D9133]);
+	if (b[eax+0xff] != 1) return;
+	b[p1+0xff] = 1;
+	b[p1+0xfe] = b[p1+0x100];
+	w[p1+0x102] = 0;
+	w[p1+0x104] = 0;
+	w[p1+0x106] = 0;
+	F732 (p1);
+	F753 (p1);
+}
+
+// Event 6, AI 0x1, 0x2 - close, shoot
+
+void F752 (PhysObj *p1)
+{
+	F732 (p1);
+	F753 (p1);
+}
+
+// AI-attack update function
+
+void F753 (PhysObj *p1)
+{
+	eax = F1532 (b[p1+0xfe], [D9133]);
+	F610 (p1, eax, 1, &s1, &s4, [D9133]);	// Set autopilot thrust
+	if (s1 > 0xa) { F749 (p1); return; }	// distance check
+	b[D9046] |= 2;				// combat mode
+	ConsoleSetButtonImage (0x37, 1);
+	if (s1 < 5)
+	{
+		b[p1+0xff] = 0x3;			// evasion mode
+		F756 (p1);
+		F48 (0x17, 0, b[p1+0x86]);
+		return;
+	}
+	if (s1 >= 9)
+	{
+		b[p1+0xff] = 0x1;		// turn to attack mode
+		F587 (p1);				// face target
+		F599 (p1, &s4, &s7);	// set thrusters (max)
+	}
+	else {
+		F587 (p1);				// face target
+		F598 (p1, &s4, &s7);	// set thrusters
+		F754 (p1);				// missile/bomb, modeswitch
+	}
+	F48 (0x17, 0, b[p1+0x86]);
+}
+
+// Attack process function - missile, energy bomb, mode 1/2
+
+void F754 (PhysObj *p1)
+{
+	if (b[p1+0xff] == 1 || b[p1+0xff] == 2)		// attack
+	{
+		s6 = w[p1+0x108];
+		s5 = w[p1+0x10a];
+		s4 = w[p1+0x10c];
+		F1518 (&s3, &s6);		// normalise, fix15
+		eax = ([p1+0x18] >> 0x10) * s3;
+		eax += ([p1+0x1c] >> 0x10) * s2;
+		eax += ([p1+0x20] >> 0x10) * s1;
+		if (eax <= 0x20000000) b[p1+0xff] = 1;
+		else b[p1+0xff] = 0x2;
+	}
+	esi = F1530 ();
+	if (esi >= 0x2000) return;
+	eax = F941 (p1, (esi&0x7)+1, b[p1+0xfe]);	// launch missile
+	if (eax == 0) F937 (p1);					// energy bomb
+}
+
+// Event 6, AI 0x3 - attack/evasion mode
+
+void F755 (PhysObj *p1)
+{
+	F732 (p1);
+	F756 (p1);
+}
+
+// Worker function for AI 0x3
+
+void F756 (PhysObj *p1)
+{
+	eax = F1532 (b[p1+0xfe], [D9133]);
+	F590 (p1, eax, &s4, &s1);
+	w[p1+0x108] = s4;
+	w[p1+0x10a] = s3;
+	w[p1+0x10c] = s2;
+	w[p1+0x10e] = s1;
+	F588 (p1);
+	s10 = [p1+0x8c] - [D8839];
+	s9 = [p1+0x90] - [D8840];
+	s8 = [p1+0x94] - [D8841];
+	esi = -F1521 ([p1+0xc], s10);
+	esi += F1521 ([p1+0x10], s9);
+	esi += F1521 ([p1+0x14], s8);
+	s4 = esi << 2;
+	esi = -F1521 ([p1+0x0], s10);
+	esi += F1521 ([p1+0x4], s9);
+	esi += F1521 ([p1+0x8], s8);
+	s3 = esi << 2;
+	s2 = 0x7fff;
+	F598 (p1, &s4, &s7);
+	if (s1 > 0xa) { F749 (p1); return; }	// mode 5->4
+	b[D9046] |= 2;
+	ConsoleSetButtonImage (0x37, 1);
+	if (s1 > 6) {
+		b[p1+0xff] = 1;
+		F48 (0x17, 0, b[p1+0x86]);
+	}
+	F754 (p1);
+}
+
+// Event 6, AI 0xc - missile evasion mode
+
+void F757 (PhysObj *p1)
+{
+	F732 (p1);
+	s2 = s3 = 0; s1 = 0x7fff;
+	F599 (p1, &s3, &s6);
+	F588 (p1);
+	esi = F1530 ();
+	if (esi > 0xa000) F935 ();
+	w[p1+0xb2] = esi & 0xff;
+	w[p1+0xb0] = (esi>>8) & 0xff;
+}
+
+// Event 6, AI 0x13 - missile function
+
+void F758 (PhysObj *p1)
+{
+	if (++w[ebx+0x9e] > 0x3c) F719 (p1);	// timeout
+	F732 (p1);
+	esi = F1532 (b[p1+0xfe], [D9133]);		// get target pointer
+	F596 (p1, esi, 3, &s1, &s4, [D9133]);	// accel fudge function
+	if (s1 > 4)
+	{
+		F599 (p1, &s4, &s7);		// sets thrusters
+		F586 (p1);					// turn to face
+	}
+	else F721 (p1, esi);			// proximity detonation
+}
+
+// Event 6, AI 0x6 - nothing
+
+void F759 (PhysObj *p1)
+{
+	F732 (p1);
+}
+
+// Event 6, AI 0x10 - move by 0x1312d00, select trading target
+
+void F760 (PhysObj *p1)
+{
+	edx = [p1+0x3e];
+	[p1+0x3e] += 0x1312d00;
+	if (edx > [p1+0x3e]) [p1+0x42]++;
+	F761 (p1);
+}
+
+// Select trading target - either HS or local
+
+void F761 (PhysObj *p1)
+{
+	if (F775 (p1) && F775 (p1)) { F762 (p1); return; }
+	b[p1+0xff] = 0x1d;
+	w[p1+0x9e] = 0xffff;
+	[p1+0xa4] = -1;
+	F738 (p1);
+	F48 (0x17, 0, b[p1+0x86]);
+}
+
+// Local trading target selection
+
+void F762 (PhysObj *p1)
+{
+	esi = F700 (&s1);
+	if (esi == 0) F925 (p1);
+	else {
+		b[p1+0x100] = b[esi+0x86];
+		b[p1+0xff] = 0;
+		F48 (0x17, 0, b[p1+0x86]);
+	}
+}
+
+// Event 6, AI 0x1e
+// Cloud remnant? Cycles HS anim, dies at obj. time
+
+void F763 (PhysObj *p1)
+{
+	s1 = [D8804]; s2 = [D8807];
+	eax = F739 (&s2, &s1, p1+0xac, p1+0xa8);
+	if (eax != 0) {
+		eax = s1;
+		if (eax < 0) eax += 0xff;
+		[p1+0xa4] = -((eax>>8)+1);
+	}
+	else F925 (p1);
+}
+
+// Event 6, AI 0x1d
+// HS Entrance cloud - cycles, dies at obj time.
+
+void F764 (PhysObj *p1)
+{
+	s1 = [D8804]; s2 = [D8807];
+	eax = F739 (&s2, &s1, p1+0xac, p1+0xa8);
+	if (eax != 0) {
+		[p1+0xa4] = ~((s1>>3) & (s2<<0x1d));
+	}
+	else F925 (p1);
+}
+
+// Event 6, AI 0x19 - asteroid
+
+void F765 (PhysObj *p1)
+{
+	if b[p1+0x88] < 0x10) return;
+	b[D9102] --;
+	F925 (p1);
+}
+
+// Event 6, AI 0x18
+// dies at small distance from player
+
+void F766 (PhysObj *p1)
+{
+	if (b[p1+0x88] < 0xf) return;
+	F940 (p1);
+}
+
+// Event 6, AI 0x16 - normal cargo?
+
+void F767 (PhysObj *p1)
+{
+	F732 (p1);
+	if (b[p1+0x88] < 0xd) return;
+	F925 (p1);
+}
+
+// Event 6, AI 0x15 - metal alloys?
+// smokes for a bit
+
+void F768 (PhysObj *p1)
+{
+	b[p1+0x14e]--;
+	if (b[p1+0x14e] >= 0) return;
+	b[p1+0xff] = 0x16;
+	F48 (0x17, 0, b[p1+0x86]);
+}
+
+// Event 6, AI 0x1b - space dust
+
+void F769 (PhysObj *p1)
+{
+	if (b[p1+0x8b] == 0 && b[p1+0x88] <= 0x14)
+	{
+		[p1+0xb0] += [D9045] << 8;
+		if ([p1+0xb0] < [D7706]) return;
+	}
+	F940 (p1);
+}
+
+// Event 6, AI 0x9 - bounty hunters intercept function
+
+void F770 (PhysObj *p1)
+{
+	F732 (p1);
+	eax = F1532 (b[p1+0xfe], [D9133]);
+	F596 (p1, eax, b[p1+0x101], &s1, &s4, [D9133]);
+	if (s1 >= 0xa)
+	{
+		F599 (p1, &s4, &s7);
+		F587 (p1);
+		return;
+	}
+	if (b[p1+0xfe] == b[D8857])
+	{
+		[ebp-0x4c] = 0x98d0;		// ...regret dealing with...
+		[ebp-0x34] = 0xd;
+		[ebp-0x40] = [p1+0xa0];
+		[ebp-0x28] = [p1+0x11a];
+		[ebp-0x30] = p1;
+		F349 (ebp-0x4c);
+		SoundStopSong ();
+	}
+	b[p1+0xff] = 1;				// combat mode
+	F48 (0x17, 0, b[p1+0x86]);
+}
+
+
+
+
+
+
+
+// Pure F773 wrapper
+
+PhysObj *F771 (PhysObj *copyfrom, int shiptable, int modelindex)
+{
+	return F773 (p1, p2, p3);
+}
+
+// Object gen of some kind
+
+PhysObj *F772 (int shiptable)
+{
+	eax = F658 (p1, &s1.w1);		// Generate model index
+	return F773 (D6259, p1, eax);
+}
+
+PhysObj *F773 (PhysObj *copyfrom, int shiptable, int modelindex)
+{
+	esi = F927 ([D9133], p1, 0x4f, p3, &s1);	// create object
+	if (s1 == 0) return 0;
+
+	b[esi+0x87] = 0xb;
+	b[esi+0x118] = p2;						// store shiptable
+	F703 (esi, b[p2+D6267], ebp-0x28);		// ship name?
+	s5 = [F1538 ([esi+0x82])+0x38];			// stats pointer
+	s3.w1 = F1530 () & 0xffff;				// tech/wealth?
+
+	if (b[esi+0x118] == 0xe) {				// police
+		[esi+0xa0] = 0;						// Uniform colour
+		s3.w1 = [D8995] << 8;
+	}
+	if (b[esi+0x118] == 0x10) s3.w1 = 0xffff;	// assass. targets
+	s2 = w[esi+0x116];							// remain. int cap
+	edi = 0;
+	edx = F1530 ();
+	eax = w[s5+0x14];							// drive
+	if (b[esi+0x118] == 0xc) edx = 0xffff;		// bounty hunters?
+	if (edx > 0xf000 && b[esi+0x118] != 1)
+		{ s2--; edi |= 0x100; }					// HS cloud analyser
+	if (eax >= 0) {
+		if (edx > 0xc000) eax >>= 8;			// 1/3 chance of altern.
+		eax &= 0xf;
+		b[esi+0xd0] = eax;
+		s2 -= [eax*4 + D6261];					// actual drive
+	}
+	eax = b[esi+0xd0];
+	[esi+0x11e] = [eax*4 + D6266] << 0x18;		// fuel
+	ebx = [eax*4 + D6262];
+	if (ebx >= s2) ebx = s2;		
+	s2 -= ebx;	// J3101
+	b[esi+0x119] = ebx;							// cargo fuel
+	b[esi+0xd2] = F774 (esi, &s2);				// laser
+
+	ebx = s2;
+	if (ebx > 0x12c) ebx = 0x12c;
+	if (b[esi+0x118] == 1) ebx = ebx / 4;
+	ebx = ebx / 4;
+	ebx = ebx * s3.w1 / 0xffff;
+	ebx = F922 (ebx);
+	ebx = F922 (ebx) * 2;
+	s2 -= ebx;
+	w[esi+0xe2] = ebx << 4;						// shields
+
+	if (s2 >= 2) {
+		ebx = F922 (s3.w1);
+		if (ebx >= 0xc000) {
+			edi |= 0x80;
+			s2 -= 2;							// naval ECM
+		}
+		else if (ebx >= 0x4000) {
+			edi |= 0x8;
+			s2 -= 2;							// ECM
+		}
+	}	
+	if (s2 > 0) {
+		s4 = w[s5+0x12];						// missiles
+		s4 = F922 (s4+1);
+		if (s4 >= 1) {
+			ebx = [(s3.w1>>0xc) + D6260];
+			while (s2 > 0 && s4 != 0) {
+				[esi+s4+0xd6] = ebx;
+				s2--; s4--;
+			}
+		}
+	}
+	// J3108
+	if (s2 > 0) {
+		eax = F922 (s3.w1);
+		if (eax >= 0x800) { s2--; edi |= 4; }	// scanner
+		eax = F922 (s3.w1);
+		if (eax >= 0xfc00 && s2 >= 4 && b[esi+0x118] != 0xe) {
+			s2--; edi |= 0x400;
+		}										// energy bomb
+	}
+	edi |= 0x4000;								// atmos. shield
+	ebx = s2 * [b[esi+0x118]*4 + D6263];
+	if (ebx > 0xaf) ebx = 0xaf;
+	s2 -= ebx;
+	b[esi+0x119] += ebx;						// Cargo fuel again?
+	w[esi+0x116] = s2;							// remaining capacity
+	[esi+0xc8] = edi >> 0x10 | edi << 0x10;		// equipment
+	return esi;
+}
+
+// Laser selection function - returns laser index
+// Also reduces remaining capacity appropriately
+
+int F774 (PhysObj *p1, int *capacity)
+{
+	edx = F922 (0x33);
+	edx += [b[p1+0x118]*4 + D6264];
+	edx = edx * p2 >> 8;
+
+	for (eax=1; eax < 9; eax++)
+		if (edx < [eax*8+D6265+4]) break;
+
+	eax--;
+	[p2] -= [eax*8+D6265+4];
+	return b[eax*8+D6265];
+}
+
+// Searches for suitable HS destination?
+// Used to see whether trading ships etc. should be generated
+
+int F775 (PhysObj *p1)
+{
+	ebx = F776 (p1, 1);
+	if (ebx != 0) return ebx;
+	ebx = F776 (p1, 1);
+	if (ebx != 0) return ebx;
+	ebx = F776 (p1, 0);
+	if (ebx != 0) return ebx;
+	ebx = F776 (p1, 0);
+	if (ebx != 0) return ebx;
+	return 0;
+}
+
+// Finds and checks random HS destination
+
+int F776 (PhysObj *p1, int p2)
+{
+	[ebp-0x2c] = F857 ([D8885], p2);			// picks a system
+	if ([ebp-0x2c] == 0) return 0;
+	[p1+0xf2] = [ebp-0x2c];						// system 
+	F870 ([ebp-0x2c], &s6, &s3, &s4, &s5);		// get system type
+	if (s3 <= 3) return 0;
+
+	// Used to get system distance
+	s1 = F859 ([ebp-0x2c], ebp-0x44, ebp-0x30, ebp-0x34, ebp-0x38);
+
+	// Used to get jump time, maxrange
+	eax = F901 (p1, &s1, ebp-0x20, ebp-0x24, ebp-0x28, ebp-0x1c, &s2);
+	if (eax < 0) return 0;
+
+	w[p1+0xf6] = s2;			// max jump range
+	[p1+0xfa] = [ebp-0x1c];		// jump time
+	return [ebp-0x2c];
+}
+
+// Death event worker function
+
+void F777 (PhysObj *p1, int deadobjindex, int killerobj)
+{
+	F731 (p1, [D8804], [D8807], p3);
+	for (edi=0x72; edi>0; edi--)
+	{
+		if (b[[D9133]+edi] == 0) continue;
+		F780 ([D9133]+0x152*edi+0x74, p1, p2);
+	}
+}
+
+// Damage event worker function
+
+void F778 (PhysObj *p1, int damagedobj)
+{
+	if (b[p1+0x87] != 0xb) return;
+	edx = [b[p1+0xff]*16 + D6258];
+	if (edx != 0) edx (p1, p2);
+}
+
+// Event 11 function
+
+void F779 (p1)
+{
+	if ([p1+0x0] != 0) F778 ([p1+0x4], b[p1+0x8]);	// damage
+	else F777 ([p1+0x4], b[p1+0x8], b[p1+0x9]);		// death
+}
+
+// Death event per-object worker function
+
+void F780 (PhysObj *p1, PhysObj *deadobj, int deadobjindex)
+{
+	if (b[p1+0x87] != 0xb) return;
+	edx = [b[p1+0xff]*16 + D6257]
+	if (edx != 0) edx (p1, p2, p3);
+}
+
+// F781-F784 death functions
+
+int F781 (PhysObj *p1, PhysObj *deadobj, int deadobjindex)
+{
+	if (p3 != b[p1+0xfe]) return;
+	b[p1+0xfe] = b[p2+0x100];
+	if (b[p2+0x100] == 0) F783 (p1, p2, p3);
+	else {
+		b[p1+0xff] = 5;
+		F48 (0x17, 0, b[p1+0x86]);
+	}
+}
+
+int F782 (PhysObj *p1, PhysObj *deadobj, int deadobjindex)
+{
+	if (p3 != b[p1+0xfe]) return;
+	F783 (p1, p2, p3);
+}
+
+int F783 (PhysObj *p1, PhysObj *deadobj, int deadobjindex)
+{
+	if (b[p1+0x118] == 0xe) {
+		b[D8647] = 0;
+		b[D8646] &= 0xfe;
+	}
+	F762 (p1);		// select trading target
+}
+
+// Death event function for missile
+
+int F784 (PhysObj *p1, PhysObj *deadobj, int deadobjindex)
+{
+	if (b[p1+0xfe] == p3) w[eax+0x9e] = 0x3c;
+	if (b[p1+0x100] == p3) b[eax+0x100] = 0;
+}
+
+// F785-F790 damage functions
+
+void F785 (PhysObj *p1, int attackobj)
+{
+	if (p2 != b[D8857]) return;
+	w[p1+0xb2] = F1530 () >> 6;
+	b[p1+0xff] = 3;
+	F48 (0x17, 0, b[p1+0x86]);
+}
+
+void F786 (PhysObj *p1, int attackobj)
+{
+	if (b[p1+0x118] == 0x10) [p1+0x11a] = 1;
+	b[p1+0xff] = 0x1f;
+	[p1+0xa8] = [D8804];
+	[p1+0xac] = [D8807];
+	F48 (0x17, 0, b[p1+0x86]);
+	F790 (p1, p2);
+}
+
+void F787 (PhysObj *p1, int attackobj)
+{
+	b[[D7758]+b[p1+0x86]] = 0x4f;
+	b[p1+0xff] = 0x21;
+	F48 (0x17, 0, b[p1+0x86]);
+}
+
+void F788 (PhysObj *p1, int attackobj)
+{
+	eax = F1532 (b[p1+0xfe], [D9133]);
+	F651 (b[p1+0x86], eax);
+}
+
+void F789 (PhysObj *p1, int attackobj)
+{
+	if (p2 == b[D8857]) {
+		b[p1+0xfe] = p2;
+		b[p1+0xff] = 1;
+		F48 (0x17, 0, b[p1+0x86]);
+	}	
+	F790 (p1, p2);
+}
+
+void F790 (PhysObj *p1, int attackobj)
+{
+	if (p2 == b[D8857] && b[D8860] & 3) F237 (0xa, 0);
+}

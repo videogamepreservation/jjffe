@@ -1,0 +1,223 @@
+
+// Basic namegen function
+// returns pointer to end of string
+
+char *F791 (int nametype, StrVars *p2, int randseed, char *output)
+{
+	if (p1 < 0x16) {
+		if (p1 < 0x6) {
+			s1 = ((p3 << 0x10) | (p3 >> 0x10)) + p3;
+			p3 = (p3 >> 0x19) | (p3 << 7);
+		}
+		else {
+			s1 = (p3 << 0x10) | (p3 >> 0x10);
+			p3 += s1;
+			s1 = p3 + ((s1 >> 0x19) | (s1 << 0x7));
+			p3 += s1;
+			s1 = p3 + ((s1 >> 0x1c) | (s1 << 0x4));
+			p3 += s1;
+		}
+	}
+	switch (p1)
+	{
+		case 0x1:	// male first name + surname
+		edi = F921 (0x69, &p3, &s1);
+		eax = F792 (p4, edi, p2, &p3, &s1);
+		b[eax-1] = 0x20;
+		return F793 (eax, edi, p2, &p3, &s1);
+
+		case 0x2:	// female first name + surname
+		edi = F921 (0x3c, &p3, &s1) + 0xe0;
+		eax = F792 (p4, edi, p2, &p3, &s1);
+		b[eax-1] = 0x20;
+		return F793 (eax, edi, p2, &p3, &s2);
+
+		case 0x4:	// pure surname, no "son"
+		F921 (p1, &p3, &s1);
+		edi = F921 (0x8a, &p3, &s1) + 0x59;
+		return F800 (edi, p2, p4);
+
+		case 0x3, 0x5:	// first name (rand), 3 adds surname
+		if (b[p3] & 1) edi = F921 (0x3c, &p3, &s1) + 0xe0;
+		else edi = F921 (0x69, &p3, &s1);
+		eax = F792 (p4, edi, p2, &p3, &s1);
+		if (p1 != 3) return eax;
+		b[eax-1] = 0x20;
+		return F793 (eax, edi, p2, &p3, &s1);
+
+		case 0x6-0xe:	// Various
+		F793 (ebp-0x2c, edi, p2, &p3, &s1);
+		[p2+0xc] = ebp-0x2c;
+		edi = F921 ([p1*4+D6275], &p3, &s4);
+		edi += [p1*4+D6274];
+		return F800 (edi, p2, p4);
+			// 0x6 starports, 0x7 stations
+			// 0x8 terraformed, 0x9 indigenous
+			// 0xa thin-atmos, 0xb battleships?
+			// 0xc corporations, 0xd merchants
+			// 0xe 'police', 0xf indirected
+	
+		case 0x12:		// normal ship ID
+		return F795 (p4, &p3, &s1);
+
+		case 0x13:		// military ship ID
+		return F796 (p4, &p3, &s1);
+
+		case 0x14:		// unknown ship ID
+		return F797 (p4, &p3, &s1);
+
+		case 0x11:		// compound station/starport names
+		F794 (ebp-0x4c, edi, p2, &p3, &s1);
+		[p2+0xc] = ebp-0x4c;
+		edi = F921 ([D6279], &p3, &s1) + [D6277];	// 0x11, 0x1ed
+		return F800 (edi, p2, p4);
+
+		case 0x10:		// Compound planet names
+		F794 (ebp-0x6c, edi, p2, &p3, &s1);
+		[p2+0xc] = ebp-0x6c;
+		edi = F921 ([D6278], &p3, &s1) + [D6276];	// 0xb, 0x1e2
+		return F800 (edi, p2, p4);
+
+		case 0x15:		// commander name
+		strcpy (p4, D8919);
+		return strlen (p4) + p4;
+
+		case 0x16:		// ship type name - different params
+		eax = F1538 (p3, p2);
+		return StringExpandFFCode (p4, w[[eax+0x38]+0xe]);
+
+		case 0x17:
+		s2 = [p2+0x4];
+		if (F461 (sb, s2)) return p4+1;
+		if (!(ebx = F464 (sb, p3))) return p4+1;
+		strcpy (p4, ebx+0x26);
+		return strlen (p4) + p4;
+
+		case 0x18:
+		s3 = [p2+0x4];
+		if (F461 (sb, s3)) return p4+1;
+		if (!(ebx = F465 (sb, p3))) return p4+1;
+		strcpy (p4, ebx+0x26);
+		return strlen (p4) + p4;
+
+		default:	// "????"
+		memcpy (p4, D6790, 5);
+		return strlen (p4) + p4;
+	}
+}
+
+// Pure string expansion function, p2 valid index
+
+char *F792 (char *output, int p2, StrVars *p3, int *seed1, int *seed2)
+{
+	return F800 (p2, p3, p1);
+}
+
+// Creates a pure surname, p2 unused
+
+char *F793 (char *output, int p2, StrVars *p3, int *seed1, int *seed2)
+{
+	if ([p4] & 0xff >= 0x19)
+	{
+		eax = 0x59 + F921 (0x8a, p4, p5);		// Pure surnames
+		ebx = F800 (eax, p3, p1);
+	}
+	else {
+		eax = 0x4f + F921 (0xa, p4, p5);		// First names + son
+		ebx = F800 (eax, p3, p1);
+		b[ebx-1] = 0x73;			// s
+		if (!(b[p4+1] & 0x8))
+			b[ebx++] = 0x6f;		// o
+			b[ebx++] = 0x6e;		// n
+		}
+		b[ebx++] = 0;
+	}
+	return ebx;
+}
+
+// Creates a pure station/starport name, p2 unused
+
+char *F794 (char *output, int p2, StrVars *p3, int *seed1, int *seed2)
+{
+	eax = 0x18a + F921 (0x58, p4, p5);
+	return F800 (eax, p3, p1);
+}
+
+// Creates a standard ship ID, form "AB-123"
+
+char *F795 (char *output, int *seed1, int *seed2)
+{
+	F798 (&p1, p2, p3);
+	F798 (&p1, p2, p3);
+	b[p1++] = 0x2d;
+	F799 (&p1, p2, p3);
+	F799 (&p1, p2, p3);
+	F799 (&p1, p2, p3);
+	b[p1++] = 0x0;
+	return p1;
+}
+
+// Creates a military ship ID, form " +123A"
+
+char *F796 (char *output, int *seed1, int *seed2)
+{
+	b[p1++] = 0x20;
+	b[p1++] = 0x2b;
+	F799 (&p1, p2, p3);
+	F799 (&p1, p2, p3);
+	F799 (&p1, p2, p3);
+	F798 (&p1, p2, p3);
+	b[p1++] = 0x0;
+	return p1;
+}
+
+// Unknown ship ID, form "AB*  1"
+
+char *F797 (char *output, int *seed1, int *seed2)
+{
+	F798 (&p1, p2, p3);
+	F798 (&p1, p2, p3);
+	b[p1++] = 0x2a;
+	b[p1++] = 0x20;
+	b[p1++] = 0x20;
+	F799 (&p1, p2, p3);
+	b[p1++] = 0x0;
+	return p1;
+}
+
+// Add random capital letter to string
+
+void F798 (char **output, int *seed1, int *seed2)
+{
+	b[[p1]++] = 0x41 + F921 (0x1a, p2, p3);
+}
+
+// Add random number to string
+
+void F799 (char **output, int *seed1, int *seed2)
+{
+	b[[p1]++] = 0x30 + F921 (0xa, p2, p3);
+}
+
+// String expansion worker for names
+
+char *F800 (int stridx, StrVars *vars, char *dest)
+{
+	StringExpandArrayIndex (p3, p1&0x1ff, p2, D6272);
+	return p3 + strlen (p3);
+}
+
+// String expansion function for names
+
+char *F801 (int stridx, StrVars *vars, char *dest)
+{
+	switch ((p1 & 0x1ff) >> 6)
+	{
+		case 1: ecx = [p2+0x0]; break;
+		case 2: ecx = [p2+0x4]; break;
+		case 3: ecx = [p2+0x8]; break;
+		case 4: ecx = [p2+0x10]; break;
+		default: ecx = [p2+0xc];
+	}
+	F791 (p1 & 0x3f, p2, ecx, p3);
+}

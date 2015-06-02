@@ -1,0 +1,606 @@
+// Event 0
+
+void F829 (p1)
+{
+	eax = (p1 & 0xff00) >> 8;
+	if (p1 & 0xff != 1) return;
+
+	[D6797] = 0;
+	edx = [eax*20 + D6820];
+	[D8804+0x250] = edx;
+	[D8804+0x23a] = edx;
+	[D8804+0x25c] = edx;
+	edx = [eax*20 + D6820 + 4];
+	[D8804+0x254] = edx;
+	[D8804+0x23e] = edx;
+	[D8804+0x260] = edx;
+	edx = [eax*20 + D6820 + 8];
+	[D8804+0x258] = edx;
+	[D8804+0x264] = edx;
+	
+	[D8804+0x242] = 0x30d40;
+	edx = [eax*20+D6820+0x10];
+	F832 ([eax*20+D6820+0xc], edx & 0xff, edx >> 8);
+	w[D8804+0x24e] = 0x69;
+	[D8804+0x29a] = 1;
+	b[D8804+0x299] = 0;
+
+	[D8776] = 0xa8;	[D8776+4] = 0x155;
+	[D8776+0x8] = [D8776+0xc] = [D8776+0x10] = 0;	
+	[D8776+0x14] = 0x156; [D8776+0x18] = 0x157;
+	[D8776+0x1c] = 0xad;
+	[D8776+0x20] = [D8776+0x24] = [D8776+0x28] = 0;
+	[D8776+0x2c] = [D8776+0x30] = [D8776+0x34] = 0;
+	[D8776+0x38] = [D8776+0x3c] = 0;
+	[D8776+0x40] = 0x158;
+	[D8776+0x44] = 0xad;
+	[D8776+0x48] = [D8776+0x4c] = [D8776+0x50] = 0;
+	[D8776+0x54] = [D8776+0x58] = [D8776+0x5c] = 0;
+	[D8776+0x60] = 0x159;
+	[D8776+0x64] = [D8776+0x68] = [D8776+0x6c] = 0;
+	[D8776+0x70] = [D8776+0x74] = [D8776+0x78] = 0;
+	[D8776+0x7c] = [D8776+0x80] = 0;
+	[D8776+0x84] = 0xad;
+	[D8776+0x88] = [D8776+0x8c] = [D8776+0x90] = 0;
+	[D8776+0x94] = 0xad; [D8776+0x98] = 0xad;
+	[D8776+0x9c] = [D8776+0xa0] = [D8776+0xa4] = 0;
+	[D8776+0xa8] = [D8776+0xac] = [D8776+0xb0] = 0;
+	[D8776+0xb4] = 0;
+	[D8776+0xb8] = 0xad; [D8776+0xbc] = 0xad;
+	[D8776+0xc0] = 0xae;
+}
+
+
+char *F830 (int p1, StrVars *vars, char *dest, int systemcode)
+{
+	if (p1 & 0x1ff == 0x1fe)						// sector number
+	{
+		sprintf (p3, D7097, (p4&0x1fff)-0x1718,		// (%i,%i)
+			((p4>>0xd)&0x1fff)-0x1524);
+		return strlen (p3) + p3;
+	}
+	if (p1 < 0x1fe && eax > 0) {					// normal one
+		return StringExpandArrayIndex (p3, p1-1, p2, D6796);
+	}
+
+	s1.w0 = p4 & 0x1fff;
+	s1.w1 = (p4 >> 0xd) & 0x1fff;
+	for (eax=0; eax < 0x31; eax++)					// handcoded sectors
+	{
+		if ([eax*4+D6799] != s1) continue;
+		return StringExpandArrayIndex (p3, [eax*4+D6800]
+			+ (p4.b3>>2)&0x3f, p2, D6796);
+	}
+
+	for (eax=0; eax < 1; eax++)						// Gateway only
+	{
+		if ([eax*24 + D6823] != p4) continue;
+		strcpy (p3, eax*24 + D6823 + 4);
+		return p3;							// BUG!!!
+	}
+
+	// Generated names
+
+	bx = p4 & 0x1fff;
+	di = (p4 >> 0xd) & 0x1fff;
+	bx += ((p4.b3>>2)&0x3f);
+	di += bx;
+
+	bx = F827 (bx, 3);
+	bx += di;
+	di = F827 (di, 5);
+	di += bx;
+	di = F827 (di, 4);
+	bx = F827 (bx, (p4.b3>>2)&0xf);
+	bx += di; edi = bx;
+	ax = F827 (bx, 11);
+	bx = eax; s2 = ax;
+	ax = F827 (bx, 11);
+
+	eax = (((ax & 0x7c) >> 2) << 2) + D6802;
+	s2 = (((s2 & 0x7c) >> 2) << 2) + D6802;
+	edi = (((edi & 0x7c) >> 2) << 2) + D6802;
+	
+	sprintf (p3, D7098, edi, s2, eax);
+	b[p3] += 0xe0;
+	return strlen (p3) + p3;
+}
+
+// String function for star system names?
+
+char *F831 (int stridx, StrVars *vars, char *dest)
+{
+	eax = p1 & 0x1ff
+	if (eax >= 0x1f0)
+	{
+		switch ((p1 >> 1) & 0x7)
+		{
+			case 6: s1 = [p2]; break;
+			case 5: s1 = [p2+0x4]; break;
+			case 4: s1 = [p2+0xc]; break;
+			case 3: s1 = [p2+0x10]; break;
+			default: s1 = [p2+0x8];
+		}
+		eax |= 0xe;
+	}
+	else s1 = [p2+0x8];
+	F830 (eax, p2, p3, s1);
+}
+
+// Select star system
+
+void F832 (int starnum, int startype, int numstars)
+{
+	esi = D6824;
+	ebx = D8804;
+	memcpy (ebp-0x40, D6824, 20);
+	b[D8954] = p3;
+	b[ebx+0x26a] = p2;
+	ax = ([ebx+0x25c] >> 0x10) & 0x1fff;
+	w[D8958] = (w[D8958] & 0xe000) | ax;
+	eax = (([ebx+0x260] >> 0x10) & 0x1fff) << 0xd;
+	[D8958] = ([D8958] & 0xfc001fff) | eax;
+	
+	b[D8958+3] = ((p1 & 0x3f) << 2) | (b[D8958+3] & 3);
+	F830 (0, ebp-0x40, D8656, [D8958]);
+	if (b[D8954] & 7)			// binary/ternary etc string
+	{
+		eax = F830 ((b[D8954] & 7) + 0x8498, ebp-0x40, D8657, [D8958]);
+		esi = eax - 1;
+	}
+	// Basic star type string instead
+	F830 (b[ebx+0x26a] & 0x1f) + 0x8488, ebp-0x40, esi, [D8958]);
+
+	// Generate range to target system
+	[D8955] = F833 ([ebx+0x25c], [ebx+0x260], [ebx+0x264],
+		[ebx+0x250], [ebx+0x254], [ebx+0x258]);
+	eax = ([ebx+0x260] >> 0x10) + ([ebx+0x260] << 0x10);
+
+	// random val dependent on pos
+	[D8956] = eax + [ebx+0x25c] - [ebx+0x264];
+
+	// Get various params
+	F869 ([D8958], D8960, D8961, D8962,
+		&s1, &s2, &s3, &s4, &s5);
+	if (b[ebx+0x26a] & 0x80) [D8956] = 0;
+
+	// random val dependent on p2, p3
+	eax = [(b[ebx+0x26a] & 0xf)*4 + D6804];
+	eax -= [(b[ebx+0x26a] & 0xf)*4 + D6803];
+	eax = (eax >> 0x10) * ((b[D8954] & 0xf8) << 0x8);
+	[D8957] = eax + [(b[ebx+0x26a] & 0xf)*4 + D6803];
+
+	if ([D8955] == 0)
+	{
+		w[ebx+0xc6] &= 0xfeff;
+		[D8963] = 0;
+	}
+	s9 = [D8955];
+	F899 ([D8861], &s9, &s8, &s6, &s7, &s11, &s10);
+	if (s6 >= 0) {		// fuel needed
+		[D8963] = s6;
+		if (s7 <= 0) [D8963] = -[D8963];
+	}
+	else [D8963] = 0xffffd8f1;
+}
+
+// find distance between two vector things?
+
+int F833 (p1, p2, p3, p4, p5, p6)
+{
+	s1 = 0xe;
+	ebx = abs ((p4 - p1) >> 8);
+	esi = abs ((p5 - p2) >> 8);
+	edi = abs ((p6 - p3) >> 8);
+
+	while (ebx > 0x7fff) { ebx>>=1; esi>>=1; edi>>=1; s1--; }
+	while (esi > 0x7fff) { ebx>>=1; esi>>=1; edi>>=1; s1--; }
+	while (edi > 0x7fff) { ebx>>=1; esi>>=1; edi>>=1; s1--; }
+
+	s2 = ebx*ebx + esi*esi + edi*edi;
+	return (int)sqrt (s2) * 0xc8b4 >> s1;
+}
+
+// System generation thing?
+// generates star positions within sector
+// optional rendering?
+// Returns p1 - vector list, p2 sector object (render info only)
+// rval is number of stars
+
+int F841 (p1, p2, int xsect, int ysect, int renderflag)
+{
+	s2.w0 = p3 >> 0x10;
+	s3.w0 = (s2.w0 & 0x1fff) | (s3.w0 & 0xe000); 	// BUG!!!
+	s2.w1 = p4 >> 0x10;
+	s3 = ((s2.w1 & 0x1fff) << 0xd) | (s3 & 0xfc001fff);	// BUG!!!
+	s3.b3 &= 3;
+
+	[p2+0xa0] = s3;
+	for (esi=0; esi < 0x31; esi++) {
+		if ([esi*4+D6799] != s2) continue;
+		s2 = 0; break;
+	}
+	if (s2 != 0)
+	{
+		s1 = F853 (p3<<0x10, p4<<0x10, 0) >> 0xa;		// Get numstars
+		if (s1 >= 0x3f) s1 = 0x3e;
+		w[p2+0xa4] = s1;
+		if (s1 == 0) return s1;
+		[p2+0x82] = 0xab;
+		[D8947] = s2 >> 0x10 | s2 << 0x10;
+		[D8948] = s2;
+		F861 ();
+		F861 ();
+		F861 ();
+		for (ebx=0; ebx<s1; ebx++)
+		{
+			F861 ();
+			b[p1+ebx*6] = 9;
+			b[p1+ebx*6+0x2] = ([D8947] & 0xff0000) >> 0x10;	
+			b[p1+ebx*6+0x3] = sx([D8947] & 0xff) >> 0x9;	// note signext
+			b[p1+ebx*6+0x4] = sx(([D8947] & 0x1fe) >> 1) >> 1;
+			b[p2+ebx*2+0xa7] = b[([D8948]&0x1f) + D6810];
+			b[p2+ebx*2+0xa6] = b[(([D8948]>>0x10)&0x1f) + D6811];
+		}
+		if (p5 != 0) F1684 (p2, p1);
+		return s1;
+	}
+
+	// J3478
+	[p2+0x82] = 0xab;
+	s1 = [esi*4 + D6801] - [esi*4 + D6800];		// ah. start/end indices
+	if (s1 != 0)
+	{
+		s4 = [esi*4 + D6800];
+		for (ebx=0; ebx<s1; ebx++)
+		{
+			edx = p1 + ebx*6;
+			ecx = (s4 + ebx) * 6;
+			[edx] = [ecx + D6793];
+			w[edx+4] = w[ecx + D6794];
+			w[p2+ebx*2+0xa6] = [(s4 + ebx)*2 + D6795];		// primitives?
+		}
+		w[p2+0xa4] = s1;
+		if (p5 != 0) F1684 (p2, p1);
+	}
+	// J3481
+	if (p5 != 0) {
+		[p2+0x82] = [esi*4+D8776];
+		if ([p2+0x82] != 0) F1682 (p2);
+	}
+	return s1;
+}
+
+
+// Ick.
+// p4, p5 bytes of 2-byte thing. Star size? Colour? What?
+// returns distance to D8950 vector - player system?
+
+int F852 (int systemcode, Vec32 *p2, int *starnum, byte *p4, byte *p5)
+{
+	sb1 = 0xfffffd2c; sb2 = 0xfffffeac;
+
+	esi = (p1 & 0x1fff) << 0x10;
+	edi = ((p1>>0xd) & 0x1fff) << 0x10;
+	eax = F841 (sb1, sb2, esi, edi, 0);
+	if ((p1.b3>>2) & 0x3f >= eax) return -1;
+
+	eax = ((p1.b3>>2) & 0x3f) * 6 + sb1;
+	F856 (esi, edi, eax, p2);				// gen starvector
+	[p3] = (p1.b3>>2) & 0x3f;
+	[p4] = b[[p3]*2 + ebp+0xffffff52];
+	[p5] = b[[p3]*2 + ebp+0xffffff53];
+	return F833 ([p2], [p2+4], [p2+8], [D8950], [D8951], [D8952]);
+}
+
+// Get number of stars in sector << 10
+
+int F853 (int sectx, int secty, int p3)
+{
+	if (p1 >= 0x2000 || p2 >= 0x2000) return 0;
+	if (p3 == 0) {
+		s4.w0 = p1; s4.w1 = p2;
+		for (eax=0; eax < 0x31; eax++) {
+			if ([eax*4+D6799] != s4) continue;
+			eax = [eax*4+D6801] - [eax*4+D6800] << 0xa;
+			return eax;
+		}
+	}
+	eax = p1 << 3;
+	edx = p2 << 3;
+	ebx = (edx & 0xfe00) + (eax >> 7) >> 2;
+	
+	ecx = [ebx+D6806];
+	s1 = b[ebx+D6808];
+	s2 = b[ebx+D6809];
+	s3 = b[ebx+D6807];
+
+	eax = (eax & 0x1ff) << 6;
+	edx = (edx & 0x1ff) << 6;
+	ebx = (s3 - ecx) * eax + (s1 - ecx) * edx;
+	
+	esi = eax * edx >> 0xf
+	edi = s2 - s1 - s3 + ecx;
+	ecx = ((ebx + esi*edi) * 2 + (ecx << 0x10)) >> 8;
+
+	if (p3 >= 0x10) return ecx;
+
+	ebx = (((eax+ecx) ^ (eax*edx >> 0xf)) >> 5) & 0x7f;
+	eax = [ebx*4+D6805];
+	if (p3 == 0) return ecx*eax >> 0x10;
+
+	edx = 0xffff - ((0x10 - p3) * eax >> 5);
+	return ecx*eax >> 0x10;
+}
+
+// String writer wrapper
+
+void F854 (int p1, StrVars *vars, int systemcode,
+	int xpos, int yposp4, COLPAL color)
+{
+	F830 (p1, p2, D9147, p3);		// Generate string
+	WriteStringShadowed (D9147, p4, p5, p6);
+}
+
+F855 (p1)
+{
+	[p1+0x8] = b[D8954] & 0x7;
+	[p1+0xc] = [D8950];
+	[p1+0x10] = [D8962];
+	[p1+0x0] = [D8956];
+	[p1+0x4] = [D8957];
+	strncpyfill (p1+0x14, D8656, 0x14);
+}
+
+// Generates Vec32 from sect, starvec.
+
+void F856 (int xsect, int ysect, Vec6b *p3, Vec32 *p4)
+{
+	ecx = p1 & 0xffff0000;
+	[p4] = ecx + ((b[p3+4] << 9) + 0x8000 & 0xffff);
+	ecx = p2 & 0xffff0000;
+	[p4+4] = ecx + ((b[p3+3] << 9) + 0x8000 & 0xffff);
+
+	if (b[p3+2] > 0) ecx = 0xffff; else ecx = 0;
+	[p4+8] = -(((-b[p3+2] << 0x10) | ecx) >> 7);	// slightly fucked
+}
+
+// Format: 6 | 13 | 13 - starnum | secty | sectx 
+// returns a random systemcode
+
+int F857 (int systemcode, int maxrange)
+{
+	switch (p2)
+	{
+		case 0:			// use current sector
+		s1 = p1;
+		s1.b3 &= 3;
+		break;
+
+		case 1:			// select random sector max 1 sect away
+		s1 = p1;
+		eax = w[F922 (0xc)*4 + D6816];
+		s1.w0 = (ax+s1.w0 & 0x1fff) | (s1 & 0xe000);
+		eax = w[F922 (0xc)*4 + D6817];
+		s1 = (((s1 >> 0xd)+eax & 0x1fff) << 0xd) | (s1 & 0xfc001fff);
+		break;
+
+		case 2:			// select random sector max 2 sects away
+		s1 = p1;
+		eax = w[F922 (0xc)*4 + D6818];
+		s1.w0 = (ax+s1.w0 & 0x1fff) | (s1 & 0xe000);
+		eax = w[F922 (0xc)*4 + D6819];
+		s1 = (((s1 >> 0xd)+eax & 0x1fff) << 0xd) | (s1 & 0xfc001fff);
+		break;
+
+		default:		// use Sol
+		s1 = 0;
+	}
+
+	// J3566
+	ebx = F853 (s1 & 0x1fff, (s1>>0xd) & 0x1fff, 0) >> 0xa;	// get numstars
+	if (ebx == 0) { s1 = 0; return s1; }
+	eax = F922 (ebx);							// pick random starnum
+	s1.b3 = ((eax & 0x3f) << 2) | (s1.b3 & 3);
+	if (s1 == p1) s1 = 0;
+	return s1;
+}
+
+// Wrapper for F852
+
+int F859 (int systemcode, p2, p3, p4, p5)
+{
+	return F852 (p1, p2, p3, p4, p5);
+}
+
+// Randomiser for star position gen
+
+void F861 ()
+{
+	edx = [D8947] + [D8948];
+	ecx = ([D8947] << 3) | ([D8947] >> 0x1d);
+	eax = ecx + edx;
+	ecx = (edx << 3) | (edx >> 0x1b);
+	[D8948] = ecx;
+	[D8947] = eax;	
+}
+
+// "Animates" 0x9e word based on 0xc9 flag
+
+void F865 (p1)
+{
+	if (b[p1+0xc9] > 0) {
+		edx = w[p1+0x9e] + ([D9155]>>1);
+		if (edx > 0xffff) {
+			w[p1+0x9e] = 0xffff;
+			b[p1+0xc9] &= 0xfe;
+			return;
+		}
+		else w[p1+0x9e] = edx;
+	}
+	else if (b[p1+0xc9] < 0) {
+		edx = w[p1+0x9e] - ([D9155]>>1);
+		if (edx > 0xffff) {
+			w[p1+0x9e] = 0;
+			b[p1+0xc9] &= 0xfe;
+			return;
+		}
+		else w[p1+0x9e] = edx;
+	}		
+}
+
+// update function for all orbital objects
+// does orbital position, animation and rotation
+// global z axis is *up*
+
+void F866 (Something *p1)
+{
+	ebx = p1.pCopy;
+	s2 = [ebx+0xa8]; s1 = [ebx+0xac];
+	[ebx+0xa8] = p1.tics;
+	[ebx+0xac] = p1.days;
+	if (b[ebx+0x14c] & 0x20) { F865 (ebx); return; }	// starport
+
+	s4 = [ebx+0xba];
+	s3 = [ebx+0xbe];
+	F1510 (s-0x20, [ebx+0xc2], s1, s2, p1.tics, p1.days);	// angvel * tdiff
+ 	[s-0x18] = [s-0x20]; [s-0x14] = [s-0x1c];
+	Int64Add64 (ebx+0xba, s4, s3, [s-0x18], [s-0x14]);		// angpos mod
+
+	eax = [ebx+0xbe] - s3;	// top part?
+	if (eax != 0)
+	{
+		if (eax > 0 && eax < 0xffff) F1508 (ebx, eax);		// increment position
+		else F1507 (ebx, [ebx+0xb0], w[ebx+0xc6], [ebx+0xbe]);	// recalc position
+	}
+	if (b[ebx+0x14c] & 0x10) F865 (ebx);	// station - animate
+	if (b[ebx+0xc8] == 0) return;			// no rotation
+
+	eax = p1.tics;
+	esi = b[ebx+0xc8] - 1;
+	if (esi >= 0) { s2 <<= esi; eax <<= esi; }
+	if (s2 >> 0x14 == eax >> 0x14) return;
+
+	// stations rotate around different axis
+	if (b[ebx+0x14c] & 0x10) MatBuildYZT (ebx, eax>>16, w[ebx+0xcc]);
+	else MatBuildYZT (ebx, w[ebx+0xcc], eax>>16);
+}
+
+
+
+struct SystemInfo
+{
+	0x0: dword systemcode;		// (D7110)
+	0x4: byte population;		// 0-7 (D7111)
+	0x5: byte 					// ends up in [D8962]
+	0x6: byte
+	0x7: byte
+	0x8: byte
+	0x9: byte
+	0xa: word allegiance;		// low 6 bits are fractional (D7112)
+	0xc: byte danger;			// 0-7 (D7113)
+	0xd: byte stockflags[31];	// 0x80 illegal, 0x8 negate, 0-7 avail (D7114)
+	0x2c: byte control;			// (D7115) 0xf impctrl, 0xf0 fedctrl
+	0x2d: byte
+	0x2e: dword 				// ends up in [D8960]
+	0x32: dword					// ends up in [D8961]
+};			// size = 0x36, 54 bytes
+
+// returns index into D7110 table
+// Negatives are generated, rest are handcoded.
+
+int F868 (int systemcode)
+{
+	for (eax=0, edx=D7110; [edx] != 0; eax++, edx+=54)
+		if (ecx == p1) break;
+	if ([eax*54 + D7110] != 0) return eax;
+
+	s1 = p1 & 0x3ffffff;
+	for (eax=0, edx=D7116; eax < 4; eax++, edx+=4)
+		if ([edx] == s1) return -1;
+
+	eax = (p1 & 0x1fff) - 0x1718;		// the centre of the galaxy :-)
+	if (eax > 0) edx = eax; else edx = -eax;
+	edx += ((p1.b3 >> 2) & 0x7);
+	eax = edx*edx;
+
+	edx = ((p1 >> 0xd) & 0x1fff) - 0x1524;
+	if (edx > 0) ecx = edx; else ecx = -edx;
+	ecx += ((p1.b3 >> 2) & 0x7);
+	eax += ecx*ecx;
+
+	if (eax >= 0x4c90) return -8;
+	if (eax >= 0x121) return -7;
+	if (eax >= 0x64) return -6;
+	if (eax >= 0x31) return -5;
+	if (eax >= 0x19) return -4;
+	if (eax >= 0x9) return -3;
+	return -2;
+}
+
+// Read various other system params
+	F869 ([D8958], D8960, D8961, D8962,
+		&s1, &s2, &s3, &s4, &s5);
+
+void F869 (int systemcode, p2, p3, p4, p5, p6, p7, p8, int *allegiance)
+{
+	eax = F868 (p1);
+
+	// D7106 == D7110 + 0x1b0
+
+	[p2] = [D7106 + eax*54 + 0x1de];
+	[p3] = [D7106 + eax*54 + 0x1e2];
+
+	[p4] = b[D7106 + eax*54 + 0x1b5];
+	[p5] = b[D7106 + eax*54 + 0x1b6];
+	[p6] = b[D7106 + eax*54 + 0x1b7];
+	[p7] = b[D7106 + eax*54 + 0x1b8];
+	[p8] = b[D7106 + eax*54 + 0x1b9];
+	
+	[p9] = w[D7106 + eax*54 + 0x1ba];		// allegiance<<6 - fractional?
+}
+
+// Get system params
+
+void F870 (int systemcode, byte *stock, int *pop,
+	int *danger, int *allegiance?)
+{
+	edx = F868 (p1);			// Get system type index
+	[p3] = b[edx*54 + D7111];	// D7110 + 4
+	[p4] = b[edx*54 + D7113];	// D7110 + 12
+	[p5] = w[edx*54 + D7112];	// D7110 + 10
+
+	ecx = D8790; edx = edx*54 + D7114;	// D7110 + 13 
+	for (eax=0; eax < 0x1f; eax++) b[ecx++] = b[edx++];
+	edx = D8790 + eax;
+	for (; eax < 0x25; eax++) b[edx++] = 0;
+	b[D8791] = 0xd;
+	[p2] = D8790;
+}
+
+// Get other system params
+
+void F871 (int systemcode, int *fedctrl, int *impctrl,
+	int *maxctrl, int *allegiance, int *minorrank, int *majorrank)
+{
+	eax = F868 (p1);
+	[p3] = b[eax*54 + D7115] >> 4;		// imp control?
+	[p2] = b[eax*54 + D7115] & 0xf;		// fed control?
+	[p5] = w[eax*54 + D7112] >> 6;		// Allegiance
+
+	if ([p3] > [p2] || ([p3] == [p2] && [p5] == 1))
+	{
+		[p6] = [D8912];
+		[p7] = [D8913];
+		[p4] = [p3];
+	}
+	else {
+		[p7] = [D8912];
+		[p6] = [D8913];
+		[p4] = [p2];
+	}
+}
+
+// F872 - F897 sysgen
+
+

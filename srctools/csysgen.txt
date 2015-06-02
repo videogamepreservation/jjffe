@@ -1,0 +1,1025 @@
+
+// System object types
+// possibly +1 - zero index means not real object
+
+0x0:	'Binary system' (co-orbital point)
+
+0x1:	'Asteroidal body'
+0x2:	'Small barren sphere of rock'
+0x3:	'Barren rocky planetoid'
+0x4:	'Rocky planet with a thin atmosphere'
+0x5:	'Highly volcanic world'
+0x6:	'World with ammonia weather system and corrosive atmosphere'
+0x7:	'World with methane weather system and corrosive atmosphere'
+0x8:	'World with water weather system and corrosive atmosphere'
+0x9:	'Small sustained terraformed world'
+0xa:	'World with indigenous life and oxygen atmosphere'
+0xb:	'Terraformed world with introduced life'
+0xc:	'Rocky world with a thick corrosive atmosphere'
+0xd:	'Small gas giant'
+0xe:	'Medium gas giant'
+0xf:	'Large gas giant'
+0x10:	'Very large gas giant'
+0x11:	'Brown dwarf substellar object'
+
+0x12:	'Type 'M' flare star'
+0x13:	'Faint type 'M' red star'
+0x14:	'Type 'M' red star'
+0x15:	'Type 'K' orange star'
+0x16:	'Type 'G' yellow star'
+0x17:	'Type 'F' white star'
+0x18:	'Type 'A' hot white star'
+0x19:	'White dwarf star'
+0x1a:	'Red giant star'
+0x1b:	'Bright giant star'
+0x1c:	'Type 'B' hot blue star'
+0x1d:	'Supergiant star'
+0x1e:	'Blue supergiant star'
+0x1f:	'Contact binary star'
+
+// soo...
+
+0x20	Orbital trading post
+0x21	Orbital station
+0x22	Orbital city
+0x23	Starport
+
+// diffs from SystemObject - 0x0 and 0xe are ffp instead of int
+
+struct HandCodedObject		// size = 0x44, 68 bytes
+{
+	0x0: dword mass;			// in earth masses
+	0x4: dword randseed;
+	0x8: word parentindex;
+	0xa: word bitmapindex?;		// 0x23 for starports, < 0x20 for others...
+	0xc: word modelindex;
+	0xe: dword orbradius;		// something orbital-distance related
+	0x12: word latitude?;		// angle related
+	0x14: dword orbvel;			// units unknown
+	0x18: dword tempptr;		// points to PhysObj
+	0x1c: dword lightoutput?;	// not used in PhysObj
+	0x20: word
+	0x22: word longitude?;		// angle related
+	0x24: word temperature;		// in kelvin
+	0x26: char pName[20];
+	0x3a: word
+	0x3c: word
+	0x3e: byte rotspeed;
+	0x3f: byte treelevel?;		// copied to 0xcb of PhysObj
+	0x40: word
+	0x42: word orientation;		// set to zero though.
+};
+
+
+
+// Randomiser for handcoded thing
+
+void F872 ()
+{
+	[D7216] = ([D7126] * 0xc6b / 0x27) & 0xffff;
+	[D7217] = ([D7127] * 0xc41 / 0x27) & 0xffff;
+}
+
+// Worker func for handcoded planets
+
+void F873 (void *output, p2, p3, p4, p5 (p5, 0x18), int parent, int radius,
+	p8, p9 (+0x28), p10, p11, p12, int model (p13, 0x38), char *name)
+{
+	[p1] = ++p2;
+	if (p3 != 0) [p1+0x4] = (p3 << 0x10) | (p3 >> 0x10);
+	else {
+		[p1+0x4] = ([D7126] << 0x10) + ([D7127] & 0xffff);
+		F872 ();
+	}
+	w[p1+0x8] = p6;
+	w[p1+0xa] = p12;
+	w[p1+0xc] = p13;
+	[p1+0xe] = p7;
+	w[p1+0x12] = (p8 << 0x10) / 0x168;		// 360...
+	[p1+0x14] = [p1+0x18] = 0;
+	w[p1+0x20] = p4;					
+	w[p1+0x22] = (p5 << 0x10) / 0xe10;		// 3600
+	w[p1+0x24] = p9 + 0x111;			// temp!
+	strcpy (p1+0x26, p14);
+	w[p1+0x3a] = w[p1+0x3c] = 0;
+	b[p1+0x3e] = p10;
+	if (p3 >= 2) b[p1+0x3f] = 2; else b[p1+0x3f] = p3;
+	w[p1+0x40] = 0;
+	w[p1+0x42] = (p11 << 0x10) / 0x168;		// 360...
+	w[p1+0x42] = 0;
+}
+
+// Worker func for handcoded starports
+
+void F874 (void *data, p2, p3, p4, p5, p6, char *name)
+{
+	[p1] = 0xfff60000;
+	if (p3 != 0) [p1+0x4] = p2;
+	else {
+		[p1+0x4] = ([D7126] << 0x10) + ([D7127] & 0xffff);
+		F872 ();
+	}
+	w[p1+0x8] = p5;
+	w[p1+0xa] = 0x23;
+	w[p1+0xc] = p6;
+	w[p1+0xe] = 0;
+	w[p1+0x12] = -((p3 << 0x10) / 0x8ca0) - 0x4000;
+	[p1+0x14] = [p1+0x18] = 0;
+	w[p1+0x20] = 0;
+	w[p1+0x22] = (p4 << 0x10) / 0x8ca0;		// 36000
+	w[p1+0x24] = 0x125;						// 20 degrees C
+	strcpy (p1+0x26, p7);
+	w[p1+0x3a] = w[p1+0x3c] = 0;
+	b[p1+0x3e] = 0; b[p1+0x3f] = 3;
+	w[p1+0x40] = w[p1+0x42] = 0;
+
+}
+
+// Adds handcoded suns/planets/stations/starports
+
+F875 ()
+{
+	F873 (D8792, 0xbebc200, 0, 0, 0, 0, 0, 0,
+		0x16a8, 2, 0, 0x16, 0x8d, "Sol");
+	F873 (D8792+0x44, 0x21, 0, 0xce, 0x46, 0x1, 0x1a5472, 0x1e,
+		0x15e, 0, 0, 3, 0x78, "Mercury");
+	// etc.
+	F874 (D8792+0x154, 0, 0xffffcc90, 0xb34, 0x5, 0x54, "London");
+	// etc.
+	[D8792+0x26c8] = 0;
+}
+
+// Event 0 - the only event for the module
+
+F876 ()
+{
+	if ([D7135] != 0) {
+		F875 ();			// add handcoded nastiness
+		[D7135] = 0;
+	}
+}
+
+word F881 (SysObj *p1, int objcount, int mass?, int parindex?, p5, p6,
+	char *name, p8, int *l1count, int *l2count, int *l3count)
+
+// Generates pair of stars
+// Bugged - doesn't set light value (0x1c)
+
+int void F877 (SysObj *p1, int *objcount, int parindex, int mass,
+	p5, p6, p7, char *name, p9)
+{
+	// One orbits around the other
+	if (p4 >= -0x11 || (p4 >= 0xa21fe80 && p4 <= 0xa6e49c0))
+	{
+		F881 (p1, p2, p4, p3, p5, p6, p8, p9, &s1, &s2, &s3);
+		F881 (p1, p2, p4>>2, [p2], p5, p7, p8, p9, &s1, &s2, &s3);
+	}
+	else {			// Opposing orbits
+		F894 ();
+		s5 = (sx(w[D8843] | 0x8000) >> 2) * (p4 >> 0x10);
+		if (s5 <= 0x1036640) s5 = 0x1036640;
+		F882 (p1, [p2], p3, p5, p6, s5+p4);
+		w[p1 + [p2]*68 + 0xa] = 0;
+		w[p1 + [p2]*68 + 0xc] = 0x17;
+		s4 = [p2];
+		strcpy (p1 + [p2]*68 + 0x26, p8);
+		s6 = strlen (p1 + [p2]*68 + 0x26);
+		if (s6 > 0xb) {
+			eax = p1 + [p2]*68 + 0x26 + s6;
+			b[eax++] = 0x2e;
+		}
+		else {
+			eax = p1 + [p2]*68 + 0x26 + s6;
+			b[eax++] = 0x20;
+		}
+		b[eax++] = b[D8848] + 0x41;
+		b[eax++] = 0x2c;
+		b[eax++] = b[D8848] + 0x42;		; A,B
+		b[eax++] = 0;
+
+		[p2]++;
+		F881 (p1, p2, p4, s4+1, p5, p7, p8, p9, &s1, &s2, &s3);
+		w[p1 + [p2]*68 - 0x32] = 0;
+		F881 (p1, p2, s5, s4+1, p5, p7, p8, p9, &s1, &s2, &s3);
+		w[p1 + [p2]*68 - 0x32] = 0x7fff;
+	}
+	// J3638
+	return p7 << 3;
+}
+
+
+struct SysGenParams
+{
+	0x0: dword randseed1;	// from [D8956] - position dependent
+	0x4: dword randseed2;	// from [D8957] - also total mass?
+	0x8: dword numstars;	// from b[D8954] & 7
+	0xc: dword systemcode;	// from [D8950]
+	0x10: dword				// from [D8962]
+	0x14: char pName[20];	// from D8656
+	...
+};
+
+
+// Returns zero-terminated list of system objects in p1
+
+void F878 (SystemInfo *p1, SysGenParams *p2)
+{
+	s4 = s5 = s6 = 0;
+	s3 = sb;
+	[D8845] = p2+0x14;
+	[D8852] = [p2+0x4];
+	[D8853] = [p2+0xc];
+	[D8854] = [p2+0x10];
+	b[D8849] = b[D8855] = b[D8856] = 0;
+	[D8846] = 0;
+	b[D8847] = b[D8848] = 0;
+	s2 = 0;
+	F871 ([D8853], ebp-0x1c, ebp-0x20, ebp-0x24, D7128, ebp-0x28, ebp-0x2c);
+
+	if ([p2+0x0] != 0)
+	{
+		// Non-handcoded version
+		[ebp-0x30] = [p2+0x4];
+		[D8843] = [p2+0x0];				// Bug? Not set for handcoded
+		[D8844] = [p2+0x4];
+		b[D8850] = b[D8851] = [p2+0x8];
+		switch ([p2+0x8])
+		{
+			case 0:		// Single star
+			s1.w1 = F881 (p1, &s2, [ebp-0x30], 0, 0, 0,
+				p2+0x14, &s3, &s4, &s5, &s6);
+			if (s1.w1 == 0) return;			
+			[ebp-0x34] = [ebp-0x30];
+			eax = F894 ();
+			F897 (p1, &s2, 1, eax, s1.w1, [ebp-0x34],
+				[ebp-0x30]>>8, p2+0x14, &s3, &s4, 0, 0);
+			[p1 + s2*68] = 0;
+			return;
+
+			case 1:		// Simple binary
+			b[D8851] --;
+			F894 ();
+			eax = w[D8844] >> 3;
+			if (b[ebp-0x2d] == 0xe0) [ebp-0x38] =  -1;
+			else [ebp-0x38] = [ebp-0x30] << 3;
+			s1.w1 = F877 (p1, &s2, 0, [ebp-0x30], [ebp-0x38], 0,
+				eax, p2+0x14, &s3);
+			eax = F894 ();
+			F897 (p1, &s2, 1, eax, s1.w1, [ebp-0x38],
+				[ebp-0x30]>>6, p2+0x14, &s3, &s4, 0, 0);
+			[p1 + s2*68] = 0;
+			return;
+
+			default:	// Binary + extras
+			F894 ();
+			w[ebp-0x3a] = w[D8844] >> 8;
+			F877 (p1, &s2, 0, [ebp-0x30], -1, 0,
+				w[ebp-0x3a], p2+0x14, &s3);
+			s1.w1 = w[ebp-0x3a] << 4;
+			b[D8851] --;
+			[ebp-0x30] += 0x81b3200;
+			if (b[D8851] > 2) [ebp-0x30] = -1;
+			eax = sx(F894 () | 0x8000) >> 2;
+			F897 (p1, &s2, 1, eax, s1.w1, -1,
+				[ebp-0x30], p2+0x14, &s3, &s4, 0, 0);
+			[p1 + s2*68] = 0;
+			return;
+	}
+	// J3645
+	// Handcoded version?
+
+	for (edx=0x8f, ebx=D7133; [ebx] != 0; ebx+=8)
+	{
+		if ([ebx] != [D8853]) continue;
+		edx = [ebx+0x4]; break;
+	}
+	[ebp-0x40] = edx;
+	ebx = [ebp-0x40] * 68 + D8792;
+	for (; [ebx] != 0; ebx+=0x44, [ebp-0x40]++, s2++) 
+	{
+		if (w[ebx+0xa] != 0x23)		// not starport
+		{
+			[p1+s2*68] = F1489 ([ebx]-1);
+			w[p1+s2*68+0x2] = 0x3f;
+			[p1+s2*68+0x4] = [ebx+0x4];
+			w[p1+s2*68+0x8] = w[ebx+0x8];
+			w[p1+s2*68+0xa] = w[ebx+0xa];
+			[p1+s2*68+0xe] = F1489 ([ebx+0xe]);
+			w[p1+s2*68+0x10] += 0x19;
+			w[p1+s2*68+0x12] = w[ebx+0x12];
+			w[p1+s2*68+0x20] = w[ebx+0x20];
+			w[p1+s2*68+0x22] = w[ebx+0x22];
+			w[p1+s2*68+0x24] = w[ebx+0x24];
+			w[p1+s2*68+0x3a] = w[ebx+0x3a];
+			w[p1+s2*68+0x3c] = w[ebx+0x3c];
+			b[p1+s2*68+0x3e] = b[ebx+0x3e];
+			w[p1+s2*68+0x42] = w[ebx+0x42];
+			w[p1+s2*68+0xc] = w[ebx+0xc];
+
+			b[D8847]++;
+			if (w[ebx+0xa] >= 0x20 && w[ebx+0xa] <= 0x22) {
+				b[D8855]++; b[D8856]++;
+			}
+
+			if (w[p1+s2*68+0x8] != 0)		// parent
+			{
+				[ebp-0x44] = [p1+s2*68+0xe];
+				[ebp-0x48] = [p1+w[p1+s2*68+0x8]*68-0x44];
+				eax = F1482 ([ebp-0x44], [ebp-0x44]);
+				eax = F1482 (eax, [ebp-0x44]);
+				eax = F1483 (eax, [ebp-0x48]);
+				[p1+s2*68+0x14] = F1463 (eax);		// sqrt (r^3 / [0xe])
+				w[p1+s2*68+0x14] = w[p1+s2*68+0x14] * 0x5edb >> 0xf;
+			}
+			else [p1+s2*68+0x14] = 0;
+
+			strcpy (p1+s2*68+0x26, [ebp-0x40]*68 + D8793);
+		}
+		else memcpy (p1+s2*68, D8792+[ebp-0x40]*68, 0x44);
+	}
+	[p1 + s2*68] = 0;		// end list
+}
+
+// only changes object position... generates starport pos?
+// p2, p3 are lat, long?
+
+void F879 (PhysObj *p1, p2, p3, PhysObjList *p4)
+{
+	s1 = F1532 (b[p1+0x56], p4);
+	ebx = F1538 ([s1+0x82]);
+	MatBuildOdd (p1, p2, p3);
+	Vec32to64 (ebp-0x20, p1+0xc);
+
+	esi = [ebx+0x2c] - 1;				// parent "radius"
+	Vec64Mul32 (ebp-0x38, ebp-0x20, esi);
+	ebx = [ebx+0x14] + [ebx+0x18] - 8;
+	Vec64Shift (ebp-0x38, ebx-0x1f);
+	F574 (&s2, ebp-0x38, p1, s1);
+
+	s2 -= (s2 >> 4);			// FIX: change to >> 3
+	if (ebx < 0) esi -= (s2 << -ebx);
+	else if (ebx < 0x10) { esi = (esi << ebx) - s2; ebx = 0; }
+	else { ebx -= 0x10; esi = (esi << 0x10) - (s2 >> ebx); }
+	Vec64Mul32 (ebp-0x38, ebp-0x20, esi);
+	Vec64Shift (ebp-0x38, ebx-0x1f);
+	F574 (&s2, ebp-0x38, p1, s1);
+
+	if (ebx < 0) esi -= (s2 << -ebx);
+	else esi -= (s2 >> ebx);
+	Vec64Mul32 (ebp-0x38, ebp-0x20, esi);
+	Vec64Shift (ebp-0x38, ebx-0x1f);
+	memcpy (p1+0x3e, ebp-0x38, 6*4);
+}
+
+// F879, F880 next - generate PhysObjs given system info list, time. 
+
+void F880 (PhysObjList *p1, SysObj *p2, int tics, int days)
+{
+	s2 = 0;
+	ebx = p2;
+	for (s2=0, ebx=p2; [ebx] != 0; s2++, ebx+=0x44)
+	{
+		if (w[ebx+0x8] != 0) esi = [p2+w[ebx+0x8]*68-0x2c];
+		else esi = D7134;
+		esi = F927 (p1, esi, 0x1d, w[ebx+0xc], &s3);
+		if (esi == 0) return;
+
+		[ebx+0x18] = esi;			// store temporary ptr
+		[esi+0xa0] = [ebx+0x4];		// seed	
+		b[esi+0xc8] = b[ebx+0x3e];	// rotation speed
+		b[esi+0xcb] = b[ebx+0x3f];	// Hmm.
+		w[esi+0xe0] = w[ebx+0x24];	// atmos. type?
+ 		w[esi+0xcc] = w[ebx+0x42];	// orientation
+		s1.w0 = 0x4082; s1.w1 = 0xffd5;		// earth mass!
+		eax = F1482 ([ebx+0x0], s1);		// ffp mult
+		s1 = [esi+0xa4] = F1496 (eax);		// ffp normalise?
+
+		if (w[ebx+0xa] == 0) {
+			b[[D7758]+b[esi+0x86]] = 0x11;
+			s1.w1 += 0x10;
+		}
+		if (w[ebx+0x8] != 0) {
+			if ([p2+w[ebx+0x8]*68-0x3a] == 0 
+				&& w[ebx+0x8]+1 >= s2) s1.w1 -= 0xa;
+		}
+		w[esi+0xda] = s1.w1;		// FOR weighting
+
+		[esi+0xb0] = [ebx+0xe];		// radius
+		b[esi+0x87] = 1;
+		if (w[ebx+0xa] >= 0x20)		// station/starport
+		{
+			w[esi+0xda] += 4;		// boost weighting
+			b[esi+0x14c] |= 0x10;	// mark as starport
+			w[esi+0xce] = 3;
+			b[[D7758]+b[esi+0x86]] = 0x1f;
+			if (w[ebx+0xa] == 0x22) w[esi+0xce] = 7;
+			b[esi+0xca] = b[esi+0xc9] = b[esi+0xd8] = 0;
+			w[esi+0xdc] = (w[esi+0xce] << 3) + 8;
+			if (w[ebx+0xa] == 0x23)			// starport
+			{
+				eax = [p2+w[ebx+0x8]*68-0x2c];
+				b[esi+0x56] = b[eax+0x86];
+				b[esi+0x14c] |= 0x20;
+				if (w[ebx+0xc] >= 0x51 && w[ebx+0xc] <= 0x5a)
+					b[esi+0x14c] |= 0x40;
+				if (w[ebx+0xc] != 0x51 && w[ebx+0xc] != 0x52)
+					w[esi+0xce] = 5;
+				if (w[ebx+0xc] == 0x55) w[esi+0xce] = 1;
+				if (w[ebx+0xc] == 0x56) w[esi+0xce] = 1;
+				if (w[ebx+0xc] == 0x59) w[esi+0xce] = 1;
+				w[esi+0xdc] = ([esi+0xce] << 3) + 8;
+				b[[D7758]+b[esi+0x86]] = 0xf;
+				b[esi+0x57] = 1;
+				b[esi+0x58] = b[D8811]-1;
+				[esi+0xc2] = 0;
+				F879 (esi, w[ebx+0x12], w[ebx+0x22], p1);
+			}
+		}
+		// J3674
+		if (w[ebx+0xa] != 0x23)
+		{
+			if (w[ebx+0x8] != 0) {
+				eax = [p2+w[ebx+0x8]*68-0x2c];
+				b[esi+0x56] = b[eax+0x86];
+			}
+			s1.w0 = 0x5460; s1.w1 = 0xffee;
+			eax = F1496 ([ebx+0x14]);
+			s4 = F1483 (s1, eax);
+			s4.w1 += 0x40;
+			[esi+0xc2] = F1494 (s4);
+
+			[esi+0xa8] = p3;
+			[esi+0xac] = p4;
+			F1510 (esi+0xba, [esi+0xc2], 0, 0, p3, p4);
+			[esi+0xbe] += w[ebx+0x12] << 0x10;
+			w[esi+0xc6] = w[ebx+0x22];
+			F1507 (esi, [esi+0xb0], w[esi+0xc6], [esi+0xbe]);
+			eax = p3 >> (0x11 - b[esi+0xc8]);
+			MatBuildYZT (esi, w[esi+0xcc], eax);
+		}
+		// J3676
+		strcpy (esi+0x124, p2+s2*68+0x26);
+	} 
+}
+
+// Generates stars, planets, moons given mass
+
+word F881 (SysObj *p1, int *objcount, int mass?, int parindex?, p5, p6,
+	char *name, p8, int *l1count, int *l2count, int *l3count)
+{
+	esi = [p2];
+	if (esi >= 0x3c) return -1;
+	b[D8847]++;
+	for (edx=0, eax=D7121; [eax] != 0; eax+=4, edx++)
+		if ([eax] > p3) break;
+	[p1+68*esi+0x1c] = [edx*4+D7124];		// unknown
+	w[p1+68*esi+0xa] = [edx*4+D7119];		// type?
+	w[p1+68*esi+0x24] = [edx*4+D7123];		// temp
+	w[p1+68*esi+0xc] = [edx*4+D7120];		// model
+	s1.w1 = [edx*4+D7122];			// puzzling
+	s2 = [edx*4+D7125];						// function
+
+	if (p3 >= 0x1036640)		// star
+	{
+		edi = p1+68*esi+0x26;
+		strcpy (edi, p7);
+		strcat (edi, D7183);	// space
+		b[D8848]++;
+		eax = p1 + esi*68 + 0x26 + strlen (edi);
+		if (p4 != 0) b[eax++] = b[D8848] + 0x40;	// ABC...
+		b[eax] = 0;
+	}
+	else if (p4 && b[p1+p4*68-0x5] & 0x80)		// parent has type what?
+	{
+		[p1+esi*68+0x4] = [D8844];
+		F893 (p1, esi, 0xa, p8);
+	}
+	else {
+		edi = p1 + esi*68 + 0x26;
+		strcpy (edi, p1+esi*68+0x26);
+		strcat (edi, D7184);	// space
+		if (b[D8849] == 0)				// First level
+		{
+			eax = p1 + esi*68 + 0x25 + strlen (edi);
+			if (++[p9] > 9) {
+				b[eax++] = 0x31;		// 2-digit
+				b[eax++] = [p9] + 0x26;
+			}
+			else b[eax++] = [p9] + 0x30;	// 1 digit
+			b[eax] = 0;
+		}
+		else {
+			eax = strlen (p1+68*esi+0x26) + p1+68*esi+0x25;
+			if (b[D8849] == 1) b[eax] = ++[p10] + 0x60;		// abc
+			else b[eax] = ++[p11] + 0x30;					// 123
+		}
+	}
+	// J3690
+	F882 (p1, esi, p4, p5, p6, p3);			// calc orbit params
+	if (s2 != 0) s2 (p1, p2, p3, p8);
+	[p2]++;
+	return s1.w1;
+}
+
+// Fills in stuff for generated body
+// p4, p5 multiplied for orbrad
+
+void F882 (SysObj *p1, int objnum, int parindex, p4, p5, int mass?)
+{
+	edi = p1+p2*68;		// not real
+
+	[edi+0xe] = F1515 (p4, p5);		// 16.16 us mult?
+	if ([edi+0xe] != 0)
+	{
+		[edi+0xe] = F1489 ([edi+0xe]);		// conv to ffp
+		w[edi+0x10] += 0x19;
+		if (p3 != 0)
+		{
+			s1 = [edi+0xe];
+			if (w[p1+p3*68-0x3a] == 0 && p2+1 <= p3) s1.w1++;
+			s2 = [p1+p3*68-0x44];
+			eax = F1482 (F1482 (s1, s1), s1);		// orbrad^3 / parmass
+			[edi+0x14] = F1463 (D1483 (eax, s2));
+			eax = w[edi+0x14] * 0x5edb >> 0xf;
+			w[edi+0x14] = eax;						// orbvel
+		}
+		else [edi+0x14] = 0;
+		w[edi+0x12] = w[D8843];					// random start pos
+	}
+	[edi+0x4] = [D8844];				// seed
+	[D8846]++;
+	w[edi+0x8] = p3;
+	[edi+0x0] = F1489 (p6);				// int->ffp
+	w[edi+0x2] += 0x3f;
+	eax = [D8843] & 0xffff;
+	w[edi+0x20] = eax * eax >> 0x18;			// unknown
+	eax = (w[D8843] >> 3) | (w[D8843] << 13);
+	w[edi+0x22] = eax * eax >> 0x14;			// longitude
+	if (p3 != 0) w[edi+0x22] += w[p1+p3*68-0x4];	// unknown too
+	
+	w[edi+0x42] = w[edi+0x4] * w[edi+0x4] >> 0x11;
+	b[edi+0x3e] = w[edi+0x42] & 0x3;			// random orientation, rspeed
+	b[edi+0x3f] = b[D8849];						// tree depth?
+	if (w[edi+0x24] >= 0x3e8) return;			// temp check
+
+	// This bit is indeterminate?
+	// Adds light sources to temp
+	for (s4=0, edi=p2; w[p1+edi*68+0x8] != 0; edi=s3)
+	{
+		s3 = w[p1+edi*68+0x8] - 1;
+		if ([p1+s3*68+0x1c] == 0) continue;
+		s5 = F1489 ([p1+s3*68+0x1c]);			// conv to ffp
+		s5.w1 += 0x32;
+		s5 = F1483 (s5, [p1+edi*68+0xe]);		// light / orbrad
+		s4 = F1486 (s4, F1482 (s5, s5));		// s4 + s5*s5
+	}
+	eax = F1491 ([D7730] ([D7730] (s4)));		// F1463
+	w[p1+p2*68+0x24] += eax;					// increase temp
+}
+
+// F883 - F890 are object-type specific funcs
+
+// Mangler function for rocky planets
+
+void F883 (SysObj *p1, int *objcount, int mass, p4)
+{
+	s1 = [p2];
+	if (w[p1+[p2]*68+0x24] > 0x139)
+	{
+		w[p1+[p2]*68+0xc] = 0x7b;
+		w[p1+[p2]*68+0xa] = 0xc;		// rocky, thick atmos.
+		w[p1+[p2]*68+0x24] += p3>>1;
+		return;
+	}
+	if (w[p1+[p2]*68+0x24] <= 0xd7)
+	{
+		if (w[p1+[p2]*68+0x24] >= 0xaa)
+		{
+			w[p1+[p2]*68+0x24] += 0x19;		// +25
+			if ([D8854] < 0xc8)
+			{
+				w[p1+[p2]*68+0xc] = 0x7b;
+				w[p1+[p2]*68+0xa] = 0x6;	// Ammonia weather
+
+				// System specific stuff - Thargoids!
+				if ([D8853] != 0x1aa89738 && [D8853] != 0x2ae1718
+					&& [D8853] != 0xeb6973d) return;
+				w[p1+[p2]*68+0xc] = 0x85;
+				if ([D8853] == 0x2ae1718 
+					&& [p1+[p2]*68+0x4] == 0x5b5ff290)
+					F892 (p1, p2, 3, p4, s1+1);
+				if ([D8853] == 0xed6973d
+					&& [p1+[p2]*68+0x4] == 0x70740190)
+					F892 (p1, p2, 4, p4, s1+1);
+				return;
+			}
+			// J3705
+			if (w[p1+[p2]*68+0x24] < 0x127) w[p1+[p2]*68+0x24] = 0x127;
+			w[p1+[p2]*68+0xc] = 0x7e;
+			w[p1+[p2]*68+0xa] = 0xb;		// Terraformed, introduced life
+			F893 (p1, [p2], 8, p4);
+			F891 (p1, p2, 0, [D8854]>>5, p4);
+
+			if ([D8854] < 0x1e) return;
+			if ([D8854] >= 0xf2) eax = 2;
+			else if ([D8854] >= 0x32) eax = 1;
+			else eax = 0;
+			F892 (p1, p2, eax, p4, s1+1);
+			return;
+		}
+		// J3709
+		edx = w[p1+[p2]*68+0x24];
+		if (edx <= 0x7b && edx >= 0x42)
+		{
+			w[p1+[p2]*68+0x24] += 0x16;		// +22
+			w[p1+[p2]*68+0xc] = 0x7c;
+			w[p1+[p2]*68+0xa] = 0x7;		// Methane & corrosive
+			return;
+		} 
+		F884 (p1, p2, p3, p4);
+		return;
+	}
+	// J3711
+	w[p1+[p2]*68+0x24] += 0x23;			// +35
+	F894 ();
+	edx = ([D8843] & 0xff) >> 2;
+	ecx = w[p1+[p2]*68+0x24] + 0xffffff06;
+	if (edx > ecx)
+	{
+		if ([D8854] < 0x78)
+		{
+			w[p1+[p2]*68+0xc] = 0x80;
+			w[p1+[p2]*68+0xa] = 0x8;		// Water & corrosive
+			return;
+		}
+		if (w[p1+[p2]*68+0x24] < 0x127) w[p1+[p2]*68+0x24] = 0x127;
+		w[p1+[p2]*68+0xc] = 0x7e;
+		w[p1+[p2]*68+0xa] = 0xb;		// Terraformed, introduced life
+		F893 (p1, [p2], 8, p4);
+		F891 (p1, p2, 0, [D8854]>>5, p4);
+
+		if ([D8854] < 0x1e) return;
+		if ([D8854] >= 0xf2) eax = 2;
+		else if ([D8854] >= 0x32) eax = 1;
+		else eax = 0;
+		F892 (p1, p2, eax, p4, s1+1);		// stations
+		return;
+	}
+	// J3716 - Base type indigenous life
+	if ([D8854] < 4) return;
+	F893 (p1, [p2], 9, p4);
+	if ([D8854] < 0x10) return;
+	if (!(b[D8843] & 0xf0)) w[p1+[p2]*68+0xc] = 0x84;
+	
+	if (w[p1+[p2]*68+0x24 > 0x118)
+	{
+		if (w[p1+[p2]*68+0x24] > 0x134)
+		{
+			w[p1+[p2]*68+0xc] = 0x83;
+			if (w[p1+[p2]*68+0x24] > 0x152)
+				w[p1+[p2]*68+0xc] = 0x82;
+		}
+		if (!(b[D8843] & 0xf))
+		{
+			w[p1+[p2]*68+0xc] = 0x80;
+			F891 (p1, p2, 0x24, [D8854]>>5, p4);
+		}
+		else F891 (p1, p2, 0x0, [D8854]>>5, p4);
+
+		if ([D8854] < 0x1e) return;
+		if ([D8854] >= 0xf2) eax = 2;
+		else if ([D8854] >= 0x32) eax = 1;
+		else eax = 0;
+		F892 (p1, p2, eax, p4, s1+1);
+		return;
+	}
+	// J3723
+	w[p1+[p2]*68+0xc] = 0x7f;
+	F891 (p1, p2, 0x18, [D8854]>>6, p4);
+	if ([D8854] < 0x28) return;
+	if ([D8854] >= 0x50) eax = 1;
+	else eax = 0;
+	F892 (p1, p2, eax, p4, s1+1);
+	return;
+}
+
+// Mangler function for small rocky planets
+
+void F884 (SysObj *p1, int *objcount, int mass, p4)
+{
+	s1 = [p2];
+	w[p1+p2*68+0x24] += 0x14;
+	if ([D8854] >= 0x96 && w[p1+[p2]*68+0x24] >= 0x102
+		&& w[p1+[p2]*68+0x24] <= 0x139)
+	{
+		if (w[p1+[p2]*68+0x24] < 0x127) w[p1+[p2]*68+0x24] = 0x127;
+		w[p1+[p2]*68+0xc] = 0x7e;
+		w[p1+[p2]*68+0xa] = 0x9;		// small terraformed
+		F893 (p1, [p2], 8, p4);
+		F891 (p1, p2, 0, [D8854]>>6, p4);
+
+		if ([D8854] < 0x1e) return;
+		if ([D8854] >= 0xb4) eax = 2;
+		else if ([D8854] >= 0x32) eax = 1;
+		else eax = 0;
+		F892 (p1, p2, eax, p4, s1+1);
+		return;
+	}
+	w[p1+[p2]*68+0xc] = 0x79;
+	w[p1+[p2]*68+0xa] = 0x4;		// small rocky, thin atmos
+	if (w[p1+[p2]*68+0x24] > 0x212) return;
+	if (([D8854] < 0xc8 || w[p1+[p2]*68+0x24] < 0xa0)
+		&& (w[p1+[p2]*68+0x24] < 0xb4 || [D8854] <= 0x6)
+		&& ([D8854] < 0xfa] || w[p1+[p2]*68+0x24] <= 0x87)) return;
+
+	// J3732
+	if (w[p1+[p2]*68+0x2] > 0x47) w[p1+[p2]*68+0x2] = 0x47;
+	F893 (p1, [p2], 0xa, p4);
+	if ([D8854] < 0x1e) return;
+	F891 (p1, p2, 0xc, 0, p4);
+	if ([D8854] < 0x64) return;
+	F892 (p1, p2, [D8854] < 0xaa ? 1 : 0, p4, s1+1);	
+}
+
+// Mangler function for barren rocky planetoid
+
+void F885 (SysObj *p1, int *objcount, int mass, p4)
+{
+	eax = w[p1+[p2]*68+0x24];
+	if (eax < 0x96 || eax > 0x1f4) return;
+	if ([D8854] < 0xc8) {
+		if (w[p1+[p2]*68+0x24] < 0xc8) return;
+		if ([D8854] <= 0x8) return;
+	}
+	F893 (p1, [p2], 0xa, p4);
+	if ([D8854] < 0x2d) return;
+	F891 (p1, p2, 0xc, 0, p4);
+	if ([D8854] < 0x96) return;
+	F892 (p1, p2, 0, p4, s1+1);
+}
+
+// Mangler function for small barren sphere of rock
+
+void F886 (SysObj *p1, int *objcount, int mass, p4)
+{
+	if (w[p1+[p2]*68+0x24] < 0xdc) return;
+	if ([D8854] <= 0x32) return;
+	F893 (p1, [p2], 0xa, p4);
+	if ([D8854] < 0x50) return;
+	F891 (p1, p2, 0xc, 0, p4);
+}
+
+// Mangler function for asteroidal body
+
+void F887 (SysObj *p1, int *objcount, int mass, p4)
+{
+	w[p1+[p2]*68+0x0] = 0;
+	w[p1+[p2]*68+0x2] = 38;
+	if (w[p1+[p2]*68+0x24] < 0xdc) return;
+	if ([D8854] <= 0x32) return;
+	F893 (p1, [p2], 0xa, p4);
+}
+
+// Mangler function for red giant
+
+void F888 (SysObj *p1, int *objcount, int mass, p4)
+{
+	if ([D8846] <= 2) return;
+	w[p1+[p2]*68+0xc] = 0x94;
+	w[p1+[p2]*68+0xa] = 0x19;		// White dwarf
+	w[p1+[p2]*68+0x1c] = 0x3e2;
+	w[p1+[p2]*68+0x24] = 0x2c09;
+	w[p1+[p2]*68+0x2]--;
+}
+
+// Mangler function for yellow star
+
+void F889 (SysObj *p1, int *objcount, int mass, p4)
+{
+	if (F894 () & 0x80000000) F890 (p1, p2, p3, p4);
+}
+
+// Mangler function for white stars
+
+void F890 (SysObj *p1, int *objcount, int mass, p4)
+{
+	if (F894 () & 0x80000000) F888 (p1, p2, p3, p4);
+}
+
+
+// This one goes to F897, probably.
+// total 430 lines more.
+
+
+// Starport generator
+
+void F891 (SysObj *p1, int *objcount, int type?, int pop?, p5)
+{
+	esi = [D8843];
+	s1 = [D8844];
+	s4 = [p2] + 1;
+	if (b[D8855] >= 0x12) return;
+	s3 = ([D8844] & 0xffff) * p4 >> 0x10;
+	if (s3 > 3) s3 = 3;
+
+	for (s5=0; s5 <= s3; s5++)
+	{
+		s1 += esi;
+		esi = ((esi << 5) | (esi >> 0x1b)) + s1;
+		esi = ((esi << 0x10) | (esi >> 0x10)) + s1;
+		[p2]++;
+		memcpy (p1+[p2]*68, D8796, 0x44);
+		w[p1+[p2]*68+0x0] = 0;
+		w[p1+[p2]*68+0x2] = 0x39;
+		w[p1+[p2]*68+0x8] = s4;
+		[p1+[p2]*68+0x4] = esi;
+
+		b[D8846]++;
+		eax = [([D8846]&0xf)*8 + D7130];
+		w[p1+[p2]*68+0x22] = eax;
+		eax = [([D8846]&0xf)*8 + D7131];
+		w[p1+[p2]*68+0x12] = eax;
+	
+		F893 (p1, [p2], 6, p5);
+		edx = (([D8854] >> 5) & 7) + p3;
+		edx += ([p1+[p2]*68+0x4] & 0x30000) >> 0x10;
+		w[p1+[p2]*68+0xc] = [edx*4 + D7132];
+
+		b[D8855]++;
+		if (b[D8855] >= 0x12) break;
+	}
+}
+
+// Station generator
+
+void F892 (SysObj *p1, int *objcount, int type, p4, int parindex)
+{
+	if (b[D8855] >= 0x12) return;
+	b[D8855]++; b[D8856]++;
+	[p2]++;
+
+	switch (p3)
+	{
+		case 0:
+		memcpy (p1+[p2]*68, D8794, 0x44);
+		eax = ([D8843] & 0x300) >> 8;
+		w[p1+[p2]*68+0xc] = w[eax*4+D7136];
+
+		case 1:
+		memcpy (p1+[p2]*68, D8797, 0x44);
+		eax = ([D8843] & 0x300) >> 8;
+		w[p1+[p2]*68+0xc] = w[eax*4+D7137];
+
+		case 2:
+		memcpy (p1+[p2]*68, D8795, 0x44);
+		eax = ([D8843] & 0x300) >> 8;
+		w[p1+[p2]*68+0xc] = w[eax*4+D7138];
+
+		case 3:
+		memcpy (p1+[p2]*68, D8794, 0x44);
+		w[p1+[p2]*68+0xc] = 0x45;
+
+		case 4:
+		memcpy (p1+[p2]*68, D8795, 0x44);
+		w[p1+[p2]*68+0xc] = 0x4f;
+	}
+
+	w[p1+[p2]*68+0x0] = 0;
+	w[p1+[p2]*68+0x2] = 0x39;		// mass
+	[p1+[p2]*68+0x4] = [D8843];		// randseed
+	w[p1+[p2]*68+0x8] = p5;			// parent
+	s1.w0 = 0x7fff; s1.w1 = 0x22;
+	[p1+[p2]*68+0xe] = s1;			// orb. radius
+
+	eax = F1482 (F1482 (s1, s1), s1);
+	eax = F1483 (eax, [p1+w[p1+[p2]*68+0x8]*68-0x44]);
+	[p1+[p2]*68+0x14] = F1463 (eax);
+	w[p1+[p2]*68+0x14] = w[p1+[p2]*68+0x14] * 0x5edb >> 0xf;	// orb vel
+
+	if (p3 == 3 || p3 == 4) {
+		memcpy (p1+[p2]*68+0x26, D7185, 5);		// "????"
+	}
+	else F893 (p1, [p2], 7, p4);
+}
+
+// Name generation worker func?
+
+void F893 (SysObj *p1, int objcount, int type, p4)
+{
+	b[p1+68*p2+0x3f] |= 0x80;
+	if ([D7128] == 3)
+	{
+		if (p3 == 8 || p3 == 9) {
+			F791 (0x10, p4, [p1+p2*68+0x4], p1+68*p2+0x26);
+			return;
+		}
+		else if (p3 == 6 || p3 == 7) {
+			F791 (0x11, p4, [p1+p2*68+0x4], p1+p2*68+0x26);
+			return;
+		}
+	}
+	F791 (p3, p4, [p1+p2*68+0x4], p1+p2*68+0x26);
+}
+
+// Random number generator for sysgen
+
+int F894 ()
+{
+	edx = [D8843] + [D8844];
+	ecx = (edx << 3) | (edx >> 0x1d);
+	eax = ecx + edx;
+	edx = (edx << 5) | (edx >> 0x1b);
+	eax += edx;
+	[D8844] = edx;
+	[D8843] = eax;
+}
+
+// String function for sysgen
+
+char *F895 (int stridx, StrVars *vars, char *dest)
+{
+	StringExpandArrayIndex (p3, p1&0x1ff, p2, D7717);
+	return p3 + strlen (p3);
+}
+
+word F896 (p1)
+{
+	if (p1 > 0x4000) return 0xffff;
+	else return w[(p1>>6)*4 + D7129];
+}
+
+
+			F897 (p1, &s2, 1, eax, s1.w1, [ebp-0x38],
+				[ebp-0x30]>>6, p2+0x14, &s3, &s4, 0, 0);
+
+void F897 (SysObj *p1, int *objcount, p3, p4, p5, p6,
+	p7, char *name, p9, p10, p11, p12)
+{
+	if (p5 > 0x7fffffff) s1 = -1;
+	else s1 = p6 + p6;
+	s3.w1 = F896 (p5);
+
+	for (edi=0, esi=p5; (edi+=esi) < 0x10000; esi+=edi)
+	{
+		ebx = ((F894 () & 0xffff) & 3) + p4;
+		if (ebx >= 0x10000) ebx = esi;
+		else ebx = esi * ebx >> 0x10;
+		edi = ebx + (esi>>2) + (esi>>3);
+		if (edi + esi >= 0x10000) break;
+
+		ebx = F894 () & 0xffff;
+		ebx = ebx * ebx >> 0x10;
+		ebx = ebx * ebx >> 0x10;
+		ebx = (F896 (edi+esi) - s3.w1) * ebx >> 0x10;
+		s3.w1 += ebx;
+		ebx = F1515 (p7, ebx);
+		if (ebx <= 0x20) continue;
+		if (ebx < 0x3a98) ebx >>= 3;
+		s4 = [p2];
+
+		// fine up to here?
+
+		if (ebx > 0x1036640 && b[D8851] > 1)
+		{
+			if (ebx > [D8852] >> 1) ebx = eax;
+			F894 ();
+			F877 (p1, p2, p3, ebx, s1, (edi>>1) + esi,
+				([D8844] & 0xffff) >> 0xb, p8, p9);
+			b[D8851] &= 0xfe;
+			s3.w0 = 0x3000;
+			ebx >>= 2;
+		}
+		else if (ebx > 0x1036640) 
+		{
+			if (b[D8851] != 0) {
+				b[D8851] --;
+				if (ebx >= [D8852] >> 1) {
+					ebx = [D8852] >> 1;
+					if (ebx < 0x1036640) ebx = 0x1036640;
+				}
+			}
+			else ebx = (F894 () & 0xffff) * 259;
+		}
+		else {
+			F881 (p1, p2, ebx, p3, s1, (edi>>1) + esi,
+				p8, p9, p10, p11, p12);
+		}
+
+		// J3772
+		if (ebx <= 0x3a98) ebx <<= 3;
+		if (ebx > s1 >> 6) s2 = s1 >> 6;
+		else s2 = ebx;
+		s5 = [D8843];
+		s6 = [D8844];
+		s7 = b[D8849];
+		if (ebx > 0x1036640) b[D8849] = 0;
+		else b[D8849]++;
+		
+		F897 (p1, p2, s4+1, F894(), s3, s2, ebx>>7,
+			s4*68+p1+0x26, p9, p10, p11, p12);
+		[D8843] = s5;
+		[D8844] = s6;
+		b[D8849] = s7;
+	}
+
+}

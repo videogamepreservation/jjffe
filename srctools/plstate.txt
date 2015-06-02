@@ -1,0 +1,373 @@
+D8622 event masks:
+
+Events:
+
+0		Init event. 
+1		Switch-to event. p1 = action (key)
+2		Various events. p1 = 0x15 rollback, 0x10 week, 0xf day
+3		Inactive per-frame update. Masked by D8624+8i
+4		Active per-frame update. Masked by D8625+8i
+5		Per-frame time update. Param { uint day, uint tics, PhysObj *p3 }
+6		Object update. Param { PhysObj *p1, int secondselapsed }
+7		Unused?
+8		Switch-from event.
+9		Unused?
+10		Seconds event. p1 seconds elapsed. masked by D8623+8i
+11		Object event function, masked with D8623, 0x4
+		struct { int p1, PhysObj *p2, index2 p3 }
+		p1 = 0 death, 1 damage
+		p2 = Affected object
+		p3 = { target obj index, attacking obj index }
+
+Event 2 types:
+
+0x1 HS entrance?
+0x2	HS exit?
+0x5 landing
+0xf day
+0x10 week
+0x15 rollback
+
+
+
+Player states (D8870):
+
+0x0 	free flight
+0x2 	under autopilot
+0x4		in hyperspace
+0x6		free flight within starport region, landing permission granted
+
+0x8		first stage docking at starport?
+0xa		first stage docking at station - align with lift
+0xc		second-stage docking - open lift door
+0xe		third-stage docking - move into lift
+0x10	fourth-stage docking - turn around in lift
+0x12	fifth-stage docking - close lift door
+0x14	sixth-stage docking - wait in lift
+0x16	seventh-stage docking - open lift door
+0x18	eight-stage docking - move into bay
+
+0x1a	first stage launching - move into lift
+0x1c	second stage launching - close lift door
+0x1e	third stage launching - wait in lift
+0x20	fourth stage launching - open lift door
+0x22	fifth stage launching - move into docking area
+
+0x24	takeoff - also set after esc. capsule usage
+0x26	free flight within starport/station region after takeoff
+
+<0x28	moving
+0x28	docked in thargoid
+0x2a	docked at station or starport
+0x2c	cannot die? death mode
+>=0x2e	free launching
+0x2e
+0x30	landed at starport - open air
+0x34	landed rough
+0x36	launching from station
+0x38	launching from starport
+
+D8835 flags:
+
+0x1		set by death
+0x4		normal ecm firing
+0x8		naval ecm firing
+0x10	energy bomb firing
+0x20	set by death
+0x40	wind
+
+D8860 flags:
+
+0x1		fuel warning flag
+0x2		undercarriage warning flag
+0x4		illegal shooting message flag
+0x10	landed near mining machine
+0x40	HS permitted
+0x80	engine noise on flag
+0x100	HS related
+
+D8871 flags:
+
+0x1		engines off
+0x2		undercarriage down
+0x4		text labels
+0x8		console in combat mode
+0x10	other space station noise playing
+0x20	space station noise playing
+0x40	radar mapper
+0x80	currently decelerating (set speed)
+
+D9085 mission struct:
+
+0x5		byte 	0xff = complete
+0x6 ?
+0x8 	byte	&0xf => mission type 3,4 photo,sat missions
+0x1a	byte	base object index
+0x1b	byte	closest photo, exponent
+
+
+PhysObj flags:
+
+0x1		per-frame event 5 update
+0x4		collision process, laser process
+0x8		alive?
+0xb		HS cloud, asteroid etc - inanimate objects?
+0xf 	starport
+0x10	Moving orbital object - not starport
+0x11	planet
+0x1f	station
+0x20	exclude from mouse click processing, undamageable by energy bomb
+0x4b	docked
+
+PhysObj struct:
+
+0x0		Mat32	relative orientation
+0x24	byte
+0x25	byte	global position valid flag
+0x26	Vec64	global position
+0x3e	Vec64	relative position
+0x56	byte	parent object index
+0x57	byte	rotational FOR flag
+0x58	byte	global orientation valid flag
+0x59	byte
+0x5a	Mat32	global orientation
+0x7e	dword	exponential scale val
+0x82	dword	model index
+0x86	byte	object index
+0x87	byte	object control - 0x1 orbital, 0x3 player ship, 0xb AI ship
+0x88	byte	exponential distance from camera
+0x89	byte
+0x8a	byte	exponential distance outside view
+0x8b	byte	frames between updates - set with 0x8a value
+0x8c	Vec32	velocity vector, actual
+0x98	word	xpos on screen
+0x9a	word	ypos on screen
+0x9c	word	anim param - time>>10 (F1536)
+0x9e	word	set equal to 0x151 (F1536) flags on hyperclouds (F1099)
+0xa0	dword	random seed
+0xa4	dword	mass (planets only?) ffp val
+0xa8	dword	creation time, tics
+0xac	dword	creation time, days (used for arrival/departure)
+
+// From here on, different stuff for orbitals
+
+0xb0	word 	pitch rate	(x rotation)
+0xb2	word	roll rate	(z rotation)
+0xb4	word	yaw rate	(y rotation)
+0xb6	word	x accel rate
+0xb8	word	y accel rate
+0xba	word	z accel rate
+0xbc	word	main thruster accel
+0xbe	word	retro thruster accel
+0xc0	word	top thruster accel
+0xc2	word	bottom thruster accel
+0xc4	word	right thruster accel
+0xc6	word	left thruster accel
+
+0xc8	dword	equipment flags
+0xcc	dword	damaged equipment flags
+0xd0	byte	drive type
+0xd1	byte	number of gun mountings
+0xd2	byte	front laser
+0xd3	byte	rear laser
+0xd4	byte	top turret laser
+0xd5	byte	bottom turret laser
+0xd6	byte	missile 1
+0xd7	byte	missile 2
+0xd8	byte	missile 3
+0xd9	byte	missile 4
+0xda	byte	missile 5
+0xdb	byte	missile 6
+
+0xe0	word	total shields
+0xe2	word	current shields
+0xe4	word	mass*4, used for damage
+0xe6	word	HS cloud - parent model, also modified by firing laser 
+0xe8	word	time to next pulse laser shot?
+0xea	word	laser temperature
+
+0xec	word	fractional vel x 
+0xee	word	fractional vel y
+0xf0	word	fractional vel z
+
+// Alternative 0xf2? Acceleration cap for large timesteps
+//0xf2	dword	destination?, zeroed on autopilot target reached
+//0xf6	dword	set to zero by HS exit
+//0xfa	dword	set to zero by HS exit
+
+// AI HS version:
+0xf2	dword	destination system code
+0xf6	word	max jump range
+0xf8	byte	post-HS AI mode
+0xf9	byte	filler?
+0xfa	dword	jump time (tics >> 0x10)
+
+0xfe	byte	starport (docked) object index, enemy index for AI
+				also parent index for pirate groups
+0xff	byte	AI mode, see below
+0x100	byte	nav target index - used for missile
+				also enemy index for pirate groups
+0x101	byte	0-2, depending on retro power
+
+0x102	word	target x-offset, used for station/starport first pass
+0x104	word	target y-offset
+0x106	word	target z-offset
+0x108	word	target x-direction
+0x10a	word	target y-direction
+0x10c	word	target z-direction
+0x10e	word	exponential distance to target (shift of dir vec)
+0x110	word	autopilot pitch (x rotation)
+0x112	word	autopilot roll (z rotation)
+0x114	word	autopilot yaw (y rotation)
+
+0x116	word	remaining internal capacity, AI only
+0x118	byte	0xff if player, 0xfb pirate, 0xfe HS cloud, 01 esc. capsule
+0x119	byte	cargo fuel in tons - AI only
+0x11a	dword	bounty
+0x11e	dword	fuel tank - 0x20000000 = 1t
+
+0x124	string	object name/ID
+0x138	int64	interaction radius
+0x140	int64	primary collision radius
+0x148	dword	physics timeout
+0x14c	byte	flags
+0x14d	byte	FOR update timeout
+0x14e	byte	smoke timeout
+0x14f	byte	ecm/bomb timeout
+0x150	byte	autopilot avoidance check timeout
+0x151	byte	laser flags
+
+
+Orbital object struct differences:
+
+0xb0	dword	orbital radius
+0xb4	word	x vel - incrementals between big update
+0xb6	word	y vel
+0xb8	word	z vel	
+0xba	qword	angular position
+0xc2	dword	angular velocity
+0xc6	word	eccentricity
+0xc8	byte	rotation speed
+0xc9	byte	docking state - direction for 0x9e counting - open/close?
+0xca	byte	current docking objindex
+0xcb	byte	set to 0x3f sysobj val
+0xcc	word	orientation
+0xce	word	number of pads for starport
+0xd0	byte	first docked object index, starport only
+0xd1	byte	other docked objects
+...
+0xd8	word	traffic control related. timeout?
+0xda	word	FOR weighting
+0xdc	word	0xce * 8 + 8
+0xde	word
+0xe0	word	temp in kelvin <0x116 => wind
+
+0x124	end of orbital-specific stuff?
+
+
+Equipment flags (0xc8 dword in PhysObj):
+
+0x1			laser cooling booster
+0x2			auto-refueller
+0x4			military camera
+0x8			escape capsule
+0x10		?energy bomb?
+0x20		navigation computer
+0x40		combat computer
+0x80		autotargeter
+0x100
+0x200		missile viewer
+0x400		cargo scoop
+0x800		chaff dispensor
+0x10000
+0x20000		cargo bay life support
+0x40000		scanner
+0x80000		ecm
+0x100000	fuel scoop
+0x200000	autopilot
+0x400000	radar mapper
+0x800000	naval ecm
+0x1000000	HS cloud analyser
+0x2000000
+0x4000000	energy bomb
+0x8000000	stowmaster
+0x10000000	energy booster
+0x20000000
+0x40000000	atmos. shield
+0x80000000	hull auto-repair system
+
+Offset 0xff values:
+
+0x0		Basic navigation mode
+0x1		Attacking - turning towards
+0x2		Attacking - firing
+0x3		Attacking - turning away
+0x4		Pirate interception
+0x5		Transitional state to 0x4
+0x6		Static?
+0x7		travel to HS entry point
+0x8 	HS exit routine
+0x9		Bounty hunter interception
+0xa		Patrol?
+0xb		Formation navigation
+0xc		Missile evasion?
+0xd		Auxiliary ships around station
+0xe
+0xf
+0x10
+0x11	Delayed HS exit cloud
+0x12	HS exit cloud
+0x13	Missile
+0x14	Mine
+0x15	Smoking cargo
+0x16	Normal cargo - abandoned ship?
+0x17	Static cargo
+0x18	Dies at small distance from player
+0x19	Asteroid
+0x1b	Space dust
+0x1c	
+0x1d	HS entrance cloud
+0x1e	HS cloud remnant
+0x1f	Request launch
+0x20	Docked/landed - waiting for traffic control timeout
+0x21	Launching
+0x23	Docking/landing
+0x24	Docked/landed
+
+Offset 0x118 values:	Stores ship table index for non-pirate?
+
+0x1		ship after esc. capsule
+0xfa	cargo
+0xfb 	pirate
+0xfd	missile
+0xfe	HS cloud
+0xff 	player
+
+Offset 0x14c flags:
+
+0x7		light index
+0x8		light flag
+0x10	starport/station? - dockable object
+0x20	starport (else station)
+0x40	open air?
+0x80	complex object
+
+Offset 0x151 flags:
+
+0x1		shields hit
+0x2		laser fired
+0x4		front laser
+0x8		rear laser
+0x10	turret laser
+0x20	ecm activated
+0x40	energy bomb activated
+
+Laser types:
+
+0x88	1MW pulse
+0xa0	1MW beam laser
+
+Drive types:
+
+0x1		Interplanetary
+0x2		class 1 hyperdrive

@@ -1,0 +1,252 @@
+void F898 ()
+{
+	F904 ();
+}
+
+
+// Hyperspace test with no fuel removal
+
+int F899 (PhysObj *p1, int *dist, ffcode *drvname, int *fuelneeded,
+	int *maxrangecur, int *jumptime, int *maxrange)
+{
+	F903 (p1, p2, p3, p4, p5, p6, p7, 1);
+}
+
+// Just gets drive name & max range
+
+int F900 (PhysObj *p1, ffcode *drvname, int *maxrange)
+{
+	s4 = 0;
+	F903 (p1, &s4, p2, &s2, &s1, &s3, p3, 1);
+}
+
+// Hyperspace test & remove fuel
+
+int F901 (PhysObj *p1, int *dist, ffcode *drvname, int *fuelneeded,
+	int *maxrangecur, int *jumptime, int *maxrange)
+{
+	F903 (p1, p2, p3, p4, p5, p6, p7, 2);
+}
+
+
+struct DriveInfo
+{
+	int power;
+	int fuelmod;
+	int mass;
+	int ffcode;
+};
+
+// Calculates jump ranges for a specific model
+// Takes model index, outputs set of drive ranges
+
+void F902 (int modelindex, int *ranges)
+{
+	s1 = [F1538 (p1) + 0x38];
+	if (w[s1+0x6] != 0) s2.w1 = w[s1+0x6];	// mass
+	else s2.w1 = 1;
+
+	[p2] = 0;
+	ebx = p2;
+	ecx = D7189;
+	for (esi=1; esi<=8; esi++, ebx+=4, ecx+=16)
+	{
+		if (w[s1+0x8] <= [ecx]) { [ebx] = 0; continue; }	// intcap
+		eax = [ecx-0x8] / s2.w1;
+		if (eax < 0x12c) eax = 0;
+		[ebx] = eax;
+	}
+}
+
+// Hyperjump test thingy?
+// dist is an *input*
+
+int F903 (PhysObj *p1, int *dist, ffcode *drvname, int *fuelneeded,
+	int *maxrangecur, int *jumptime, int *maxrange, p8)
+{
+	s1 = [F1538 ([p1+0x82]) + 0x38];
+	[p4] = w[s1+0x6];
+	s2 = D7817 + b[p1+0xd0] * 16;		// DriveInfo pointer
+	[p3] = [s2+0xc];					// Drive name...
+	[p7] = [s2+0x0] / [p4];				// Max range
+
+	if ([p7] < [p2] || [p2] == 0)		// out of range or whatever
+	{
+		[p5] = 0; [p4] = -1;
+		if (b[p1+0x86] == b[D8857] && [p2] != 0)
+			w[D8860] &= 0xfeff;
+		return -1;
+	}
+
+	// J3788 - Fuel calculation
+	[p4] = [p2] * [p4] / 0x7531 + 1;		// dist * mass 
+	[p4] -= F1521 ([p4], [s2+0x4] << 0xf);	// fuel mod
+	if ([p4] < 1) [p4] = 1;
+
+	[p6] = (([p2] << 0x10) - 1) / [p7]  * 7;		// time
+
+	// calc available fuel
+	if (b[p1+0x86] != b[D8857]) [p5] = b[p1+0x119];
+	else if (b[p1+0xd0] >= 0xa) [p5] = w[D8902];
+	else [p5] = w[D8901];
+	
+	if ([p4] > [p5]) {
+		[p5] = 0;
+		if (b[p1+0x86] == b[D8857]) w[D8860] &= 0xfeff;
+		return -1;
+	}
+
+	if (b[p1+0x86] == b[D8857]) w[D8860] |= 0x100;
+
+	// Actually make the jump, or remove fuel
+	if (p8 == 2) {
+		if (b[p1+0x86] != b[D8857]) {
+			b[p1+0x119] -= [p4]; [p5] -= [p4];
+		}
+		else if (b[p1+0xd0] >= 0xa) {
+			w[D8902] -= [p4];
+			w[D8903] += [p4];
+			[p5] -= [p4];
+			w[D8860] &= 0xfeff;
+		}
+		else {
+			w[D8901] -= [p4];
+			[D8891] -= [p4];
+			[p5] -= [p4];
+			w[D8860] &= 0xfeff;
+		}
+	}
+
+	// J3798 - sets [p5] to current maximum range
+	ebx = w[s1+0x6];
+	ebx -= F1521 (ebx, [s2+0x4] << 0xf);
+	if (ebx < 1) ebx = 1;
+	[p5] = 0x7531 / ebx * [p5];
+	if ([p7] < [p5]) [p5] = [p7];
+	return [p2];
+}
+
+void F904 ()
+{
+	F855 (sb);		// get selected system params
+	F905 (sb);		// switch to system
+}
+
+void F905 (p1)
+{
+	F906 ([p1+0xc]);		// switch to system
+	F878 (D8798, p1);		// Generate objects for system p1
+	[D9011] = b[D8856];		// starport count
+	b[D8932] = 0;			// current starport index
+	F907 ();				// asteroids
+	F880 ([D9133], D8798, [D8804], [D8807]);	// object gen stuff
+}
+
+void F906 (p1)
+{
+	[D8914] = [D8915];
+	[D8915] = [D8916];
+	[D8916] = [D8885];
+	[D8885] = p1;
+}
+
+// Process asteroid chance
+
+void F907 ()
+{
+	eax = 12 - b[D8847];
+	if (eax > 0) {
+		edx = [D8843] & 0xffff;
+		eax = edx * (eax << 3) >> 0x10;
+		eax = edx * eax >> 0x10;
+	}
+	else eax = 0;
+	b[D9103] = eax;		// max asteroids!
+}
+
+// Event 1
+
+void F908 ()
+{
+	if (b[D8870] != 0 && b[D8870] != 0x24) return;
+	if (b[D8804+0x268] == 0) return;
+	if ([D8804+0xdc] < 0xb71b00) return;		// altitude
+
+	F34 (0xf, 1);
+	eax = F35 (0xf);
+	if (eax == 0) return;
+	F34 (0xf);									// handcoded stuff
+
+	[D8804+0x5330] = [D8804+0x26c];				// range to target
+	[D8804+0x1b4] = [D8804+0x27c];
+
+	// Calculate fuel & deduct
+	eax = F901 ([D8861], D8804+0x5330, &s3, &s4, &s5, &s1, &s2);
+	if (eax < 0) return;
+
+	[D8804+0x532c] = s1;							// Jump time
+	[D8907] = s4;									// fuel used
+
+	[D8804+0x76] = eax = [D8804] + (s1 << 0x10);
+	[D8804+0x7a] = (s1 >> 0x10) + [D8807];			// HS exit time
+	// Duh.
+	if ([D8804+0x76] < eax) [D8804+0x7a] += 1;
+
+	b[D8870] = 4;						// Player module HS mode
+	F48 (1, 0, 0xe);
+	SoundPlaySample (0x21);
+	F909 ([D8804+0x27c], 1);
+	[D8804+0x106] = [D8804+0x532c];		// visual HS timeout
+	b[D8804+0xef] = 0;					// last missile
+	[D7706] = 0xf880000;
+	[D9123] = 0x12;						// time accel
+}
+
+void F909 (int systemcode, int p2)
+{
+	w[[D8861]+0xb6] = w[[D8861]+0xba] = 0;
+	F148 (1, p1);
+	[D8804+0x70] = 0;
+	F988 ([D9133]);
+	b[[D7758]+b[[D8861]+0x86]] = 0x4f;
+	if (b[D8870] == 0x2a) b[[D7758]+b[[D8862]+0x86]] = 0x4f;
+	else {
+		s1.w0 = F922 (0x2000) | 0x4000;
+		s1.w1 = 0x33;
+		F912 ([D8861], s1);
+		b[[D8861]+0x56] = 0;
+		b[[D8861]+0x57] = 0;
+		b[[D8861]+0x14d] = 0; 
+	}
+	b[D8804+0xec] = b[D8804+0xed] = b[D8804+0x112] = 0;
+	if (p2 != 0) {
+		if (F1530 () > 0xfe00) { F910 ([D8861], 0, p1); return; }
+		if (b[D7695] == 0) F910 ([D8861], 1, p1);
+	}
+	F148 (0x13, 0);
+	F860 (ebp-0x38, p1);
+	F905 (ebp-0x38);
+	if (b[D8870] == 0x2a && [[D8862]+0x82] == 0x45)
+	{
+		eax = [D8862];
+		b[eax+0x56] = 0x70;
+		[eax+0x3e] = 0xf4240;
+		[eax+0x42] = 0;
+		[eax+0x46] = 0x989680;
+		[eax+0x4e] = [eax+0x4a] = [eax+0x52] = 0;
+		[eax+0x8c] = [eax+0x90] = [eax+0x94] = 0;
+	}
+	else {
+		F606 ([D8861], [D9133]);
+		F606 ([D8861], [D9133]);
+	}
+	F148 (2, 0);
+	[D8804+0x408] = 0x337fff;
+	b[D8804+0x3fb] = 0x72;
+	F48 (1, 0, 4);
+}
+
+void F910 (PhysObj *p1, int p2, systemcode p3)
+{
+	
+}

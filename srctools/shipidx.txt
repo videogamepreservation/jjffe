@@ -1,0 +1,75 @@
+Ship list:
+Index	Hex		Ship
+0       0x00	intro text?
+1       0x01	?
+2       0x02	intro text?
+3       0x03	?
+4       0x04	Mine
+5       0x05	Mine
+6       0x06	Missile
+7       0x07	Smart Missile
+8       0x08	Naval Missile
+9       0x09	Assault Missile
+10      0x0a	Assault Missile
+11      0x0b	Assault Missile
+12      0x0c	Mycoid Missile
+13      0x0d	Nuclear Missile
+14      0x0e	Escape Capsule
+15      0x0f	Interplanetary Shuttle
+16      0x10	StowMaster Fighter
+17      0x11	"Unknown" (thargoid ship)
+18      0x12	Lifter
+19      0x13	Osprey attack fighter
+20      0x14	Falcon attack fighter
+21      0x15	Hawk airfighter
+22      0x16	Kestrel airfighter
+23      0x17	Eagle long range fighter
+24      0x18	Eagle Mk2 fighter
+25      0x19	Eagle Mk3 fighter
+26      0x1a	Sidewinder
+27      0x1b	Krait Assault Craft
+28      0x1c	Gecko
+29      0x1d	Adder
+30      0x1e	Viper Defence Craft
+31      0x1f	Saker III fighter
+32      0x20	Osprey X attack fighter
+33      0x21	Merlin attack fighter
+34      0x22	Viper Defence MkII
+35      0x23	Gyr attack fighter
+36      0x24	Cobra Mk I
+37      0x25	Moray Starboat
+38      0x26	Cobra Mk III
+39      0x27	Constrictor
+40      0x28	Asp Explorer
+41      0x29	Lanner
+42      0x2a	Harris fighter
+43      0x2b	Spar attack fighter
+44      0x2c	Wyvern Explorer
+45      0x2d	Skeet cruiser
+46      0x2e	Turner Class
+47      0x2f	Lanner II
+48      0x30	Harrier
+49      0x31	"Unknown" (thargoid ship)
+50      0x32	"Unknown" (thargoid ship)
+51      0x33	"Unknown" (thargoid ship)
+52      0x34	"Unknown" (thargoid ship)
+53      0x35	Transporter
+54      0x36	Lion Transport
+55      0x37	Tiger Trader
+56      0x38	Imperial Courier
+57      0x39	Python Freighter
+58      0x3a	Imperial Trader
+59      0x3b	Anaconda Freighter
+60      0x3c	Puma Clipper
+61      0x3d	Boa Freighter
+62      0x3e	Panther Clipper
+63      0x3f	"Unknown" (thargoid ship)
+64      0x40	Tiercel Freighter
+65      0x41	Imperial Explorer
+66      0x42	IMRA Command Ship [sic]
+67      0x43	Mantis Transport
+68      0x44	Griffin Carrier
+69      0x45	Thargoid Transporter
+70      0x46	Lynx Bulk Carrier
+71      0x47	Long-range Cruiser
+
